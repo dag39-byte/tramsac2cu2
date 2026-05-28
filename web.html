@@ -1,0 +1,340 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hệ Thống Trạm Sạc Thông Minh - Shiftr.io</title>
+    <script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, sans-serif; background-color: #121212; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; color: white; }
+        .card { background: #1e1e1e; padding: 30px; border-radius: 20px; box-shadow: 0 15px 35px rgba(0,0,0,0.5); text-align: center; width: 360px; border: 1px solid #333; }
+        h2 { margin-bottom: 5px; color: #00d4ff; }
+        #status { font-size: 13px; margin-bottom: 20px; color: #aaa; }
+        
+        /* CSS CHO KHỐI ĐĂNG NHẬP / ĐĂNG KÝ */
+        .auth-screen { display: block; }
+        .input-group { margin-bottom: 15px; text-align: left; }
+        .input-group label { display: block; font-size: 13px; color: #aaa; margin-bottom: 5px; }
+        .input-group input { width: 100%; padding: 12px; border-radius: 8px; border: 1px solid #444; background: #252525; color: white; box-sizing: border-box; font-size: 14px; }
+        .input-group input:focus { border-color: #0077ff; outline: none; }
+        .btn-auth { width: 100%; padding: 14px; background: linear-gradient(145deg, #0077ff, #0055ff); border: none; border-radius: 8px; color: white; font-weight: bold; font-size: 15px; cursor: pointer; transition: 0.3s; margin-top: 10px; }
+        .btn-auth:hover { box-shadow: 0 0 15px rgba(0, 119, 255, 0.4); }
+        .auth-toggle { font-size: 13px; color: #00d4ff; cursor: pointer; margin-top: 15px; display: inline-block; }
+
+        /* CSS CHO MÀN HÌNH CHỌN TRẠM SẠC */
+        #station-select-screen { display: none; }
+        .station-btn { width: 100%; background: linear-gradient(145deg, #333, #222); border: 1px solid #444; padding: 15px; border-radius: 12px; color: white; font-weight: bold; margin-bottom: 15px; cursor: pointer; transition: 0.3s; display: flex; justify-content: space-between; align-items: center; }
+        .station-btn:hover { background: #0077ff; border-color: #0077ff; transform: translateY(-2px); }
+        .logout-btn { background: none; border: none; color: #ff5252; cursor: pointer; font-size: 13px; float: right; padding: 0; font-weight: bold;}
+
+        /* CSS CHO MÀN HÌNH ĐIỀU KHIỂN CHI TIẾT */
+        #main-control-screen { display: none; }
+        .mode-display { font-size: 18px; margin: 15px 0 25px 0; padding: 12px; border-radius: 12px; background: #252525; border: 1px dashed #444; font-weight: bold; transition: 0.3s; }
+        .lcd-telemetry { display: none; grid-template-columns: 1.3fr 0.7fr; gap: 12px; background: #151515; padding: 15px; border-radius: 12px; margin-bottom: 20px; border: 1px solid #222; text-align: left; font-family: 'Courier New', Courier, monospace; }
+        .param { font-size: 14px; color: #aaa; }
+        .val { font-size: 16px; font-weight: bold; color: #fff; text-align: right; }
+        .highlight { color: #00ff88; }
+        .highlight-power { color: #ffeb3b; }
+        .highlight-time { color: #ff9800; }
+
+        .btn-group { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-top: 15px; clear: both; }
+        button.action-btn { border: none; padding: 18px 10px; border-radius: 12px; cursor: pointer; font-weight: bold; font-size: 14px; transition: 0.3s; color: white; }
+        .btn-slow { background: linear-gradient(145deg, #424242, #212121); border: 1px solid #616161; }
+        .btn-slow:hover { background: #616161; }
+        .btn-fast { background: linear-gradient(145deg, #0077ff, #0055ff); box-shadow: 0 0 15px rgba(0, 119, 255, 0.4); }
+        .btn-fast:hover { box-shadow: 0 0 25px rgba(0, 119, 255, 0.6); transform: scale(1.05); }
+        .btn-off { display: none; grid-column: span 2; background: linear-gradient(145deg, #d32f2f, #b71c1c); box-shadow: 0 0 10px rgba(211, 47, 47, 0.3); padding: 15px 10px; }
+        .btn-off:hover { background: #d32f2f; box-shadow: 0 0 20px rgba(211, 47, 47, 0.5); }
+
+        .charging-icon { font-size: 40px; margin-bottom: 10px; clear: both; }
+        .back-btn { background: none; border: none; color: #888; cursor: pointer; font-size: 13px; display: inline-flex; align-items: center; gap: 5px; float: left; padding: 0;}
+        .back-btn:hover { color: #ff5252; }
+    </style>
+</head>
+<body>
+
+<div class="card auth-screen" id="login-screen">
+    <div class="charging-icon">🔒</div>
+    <h2>ĐĂNG NHẬP CLOUD</h2>
+    <p style="color: #888; font-size: 13px; margin-bottom: 20px;">Đồng bộ dữ liệu tài khoản toàn cầu</p>
+    
+    <div class="input-group">
+        <label>Tên tài khoản</label>
+        <input type="text" id="login-user" placeholder="Nhập tài khoản">
+    </div>
+    <div class="input-group">
+        <label>Mật khẩu</label>
+        <input type="password" id="login-pass" placeholder="Nhập mật khẩu">
+    </div>
+    <button class="btn-auth" id="btn-submit-login" onclick="handleLogin()">Đăng Nhập</button>
+    <div class="auth-toggle" onclick="switchAuth('register')">Chưa có tài khoản? Đăng ký đám mây</div>
+</div>
+
+<div class="card auth-screen" id="register-screen" style="display: none;">
+    <div class="charging-icon">📝</div>
+    <h2>ĐĂNG KÝ CLOUD</h2>
+    <p style="color: #888; font-size: 13px; margin-bottom: 20px;">Lưu tài khoản lên Server Shiftr</p>
+    
+    <div class="input-group">
+        <label>Tên tài khoản mới</label>
+        <input type="text" id="reg-user" placeholder="Tên tài khoản">
+    </div>
+    <div class="input-group">
+        <label>Mật khẩu</label>
+        <input type="password" id="reg-pass" placeholder="Nhập mật khẩu">
+    </div>
+    <button class="btn-auth" onclick="handleRegister()">Tạo Tài Khoản Cloud</button>
+    <div class="auth-toggle" onclick="switchAuth('login')">Đã có tài khoản? Quay lại đăng nhập</div>
+</div>
+
+<div class="card" id="station-select-screen">
+    <button class="logout-btn" onclick="handleLogout()">Đăng xuất ↩</button>
+    <div class="charging-icon" style="clear: both; padding-top: 10px;">🔌</div>
+    <h2>HỆ THỐNG TRẠM SẠC</h2>
+    <p style="color: #888; font-size: 14px; margin-bottom: 30px;">Xin chào quản trị viên đám mây!</p>
+    
+    <button class="station-btn" onclick="selectStation('tramsac1', 'TRẠM SẠC SỐ 1')">
+        <span>🔹 Trạm Sạc Số 1</span>
+        <span style="font-size: 12px; color: #888; background: #111; padding: 3px 8px; border-radius: 20px;">ID: tramsac1</span>
+    </button>
+    <button class="station-btn" onclick="selectStation('tramsac2', 'TRẠM SẠC SỐ 2')">
+        <span>🔹 Trạm Sạc Số 2</span>
+        <span style="font-size: 12px; color: #888; background: #111; padding: 3px 8px; border-radius: 20px;">ID: tramsac2</span>
+    </button>
+</div>
+
+<div class="card" id="main-control-screen">
+    <button id="btn-change-station" class="back-btn" onclick="goBack()">◀ Đổi trạm</button>
+    <div class="charging-icon" id="icon">🔌</div>
+    <h2 id="station-title">TRẠM SẠC 2 CỦ</h2>
+    
+    <div id="status">Đang kết nối Server...</div>
+    <div class="mode-display" id="esp-connection" style="color: #888; border-color: #444;">TRẠM SẠC: CHECKING...</div>
+
+    <div class="lcd-telemetry" id="telemetry-box">
+        <div class="param">Điện áp ( V ) :</div><div class="val highlight" id="web-vout">0.00 V</div>
+        <div class="param">Dòng điện ( I ) :</div><div class="val" id="web-curr">0 mA</div>
+        <div class="param">Công suất ( P ) :</div><div class="val highlight-power" id="web-power">0.00 W</div>
+        <div class="param">Thời gian sạc ( T ) :</div><div class="val highlight-time" id="web-time">0 Phút</div>
+    </div>
+
+    <div class="btn-group">
+        <button id="btn-slow" class="action-btn btn-slow" onclick="sendControl('SLOW')">SẠC CHẬM</button>
+        <button id="btn-fast" class="action-btn btn-fast" onclick="sendControl('FAST')">SẠC NHANH</button>
+        <button id="btn-off" class="action-btn btn-off" onclick="sendControl('OFF')">TẮT HỆ THỐNG 🛑</button>
+    </div>
+</div>
+
+<script>
+    // Cấu hình mạng MQTT Broker dùng chung cho cả xác thực tài khoản và điều khiển
+    const broker = "wss://tramsac2cu2.cloud.shiftr.io"; 
+    const options = {
+        clientId: "web_client_" + Math.random().toString(16).substr(2, 4),
+        username: 'tramsac2cu2', 
+        password: 'OYWScA8JD6HIfrQL'  
+    };
+
+    // Kết nối MQTT ngay khi mở trang để sẵn sàng check tài khoản trên Cloud
+    const authClient = mqtt.connect(broker, options);
+    let authTimeout = null; // Biến quản lý bộ đếm giờ kiểm tra đăng nhập
+
+    function switchAuth(type) {
+        if(type === 'register') {
+            document.getElementById('login-screen').style.display = 'none';
+            document.getElementById('register-screen').style.display = 'block';
+        } else {
+            document.getElementById('register-screen').style.display = 'none';
+            document.getElementById('login-screen').style.display = 'block';
+        }
+    }
+
+    // ĐĂNG KÝ: Bắn mật khẩu lên chủ đề riêng biệt dạng Retain
+    function handleRegister() {
+        const user = document.getElementById('reg-user').value.trim();
+        const pass = document.getElementById('reg-pass').value.trim();
+
+        if(!user || !pass) { alert('Vui lòng điền đầy đủ thông tin!'); return; }
+        
+        authClient.publish('tramsac/users/' + user, pass, { retain: true, qos: 1 });
+        alert('Đăng ký tài khoản trên Cloud thành công!');
+        switchAuth('login');
+    }
+
+    // ĐĂNG NHẬP CLOUD - ĐÃ ĐỒNG BỘ FIX HOÀN TOÀN LỖI POPUP KHÔNG TỒN TẠI
+    function handleLogin() {
+        const user = document.getElementById('login-user').value.trim();
+        const pass = document.getElementById('login-pass').value.trim();
+
+        if(!user || !pass) { alert('Vui lòng nhập tài khoản và mật khẩu!'); return; }
+        
+        const targetTopic = 'tramsac/users/' + user;
+        document.getElementById('btn-submit-login').innerText = "Đang kiểm tra...";
+        
+        authClient.subscribe(targetTopic);
+
+        // Thiết lập sự kiện bắt gói tin mật khẩu đổ về từ Cloud
+        const checkAuth = (topic, message) => {
+            if(topic === targetTopic) {
+                const cloudPassword = message.toString();
+                
+                // XÓA BỘ ĐẾM GIỜ NGAY LẬP TỨC KHI CÓ PHẢN HỒI TỪ SERVER
+                if (authTimeout) { clearTimeout(authTimeout); authTimeout = null; }
+
+                authClient.unsubscribe(targetTopic); 
+                authClient.removeListener('message', checkAuth);
+
+                if(cloudPassword === pass) {
+                    // Đúng mật khẩu -> Mở khóa giao diện và chuyển trang
+                    document.getElementById('login-screen').style.display = 'none';
+                    document.getElementById('station-select-screen').style.display = 'block';
+                } else {
+                    alert('Mật khẩu đám mây không chính xác!');
+                    document.getElementById('btn-submit-login').innerText = "Đăng Nhập";
+                }
+            }
+        };
+
+        authClient.on('message', checkAuth);
+
+        // Reset bộ đếm cũ đề phòng rác
+        if (authTimeout) clearTimeout(authTimeout);
+
+        // Kích hoạt bộ đếm giờ ngầm bảo vệ (Sau 4 giây không thấy dữ liệu đổ về -> Báo lỗi)
+        authTimeout = setTimeout(() => {
+            authClient.unsubscribe(targetTopic);
+            authClient.removeListener('message', checkAuth);
+            if(document.getElementById('btn-submit-login').innerText === "Đang kiểm tra...") {
+                alert('Tài khoản này không tồn tại trên Cloud!');
+                document.getElementById('btn-submit-login').innerText = "Đăng Nhập";
+            }
+        }, 4000); 
+    }
+
+    function handleLogout() {
+        document.getElementById('login-user').value = "";
+        document.getElementById('login-pass').value = "";
+        document.getElementById('btn-submit-login').innerText = "Đăng Nhập";
+        document.getElementById('station-select-screen').style.display = 'none';
+        document.getElementById('login-screen').style.display = 'block';
+    }
+
+    // ==========================================
+    // LOGIC 3: ĐIỀU KHIỂN CHI TIẾT TRẠM SẠC
+    // ==========================================
+    let client = null;
+    let currentStationID = ""; 
+    let topicControl = "", topicStatus = "", topicData = "", topicDevice = ""; 
+
+    function selectStation(stationID, stationName) {
+        currentStationID = stationID;
+        document.getElementById('station-title').innerText = stationName;
+
+        topicControl = stationID + "/chedo"; 
+        topicStatus = stationID + "/status"; 
+        topicData = stationID + "/data"; 
+        topicDevice = stationID + "/device";
+
+        document.getElementById('station-select-screen').style.display = "none";
+        document.getElementById('main-control-screen').style.display = "block";
+
+        initMQTT();
+    }
+
+    function initMQTT() {
+        document.getElementById('status').innerText = "Đang kết nối Server...";
+        document.getElementById('status').style.color = "#aaa";
+
+        client = mqtt.connect(broker, options);
+
+        client.on('connect', () => {
+            document.getElementById('status').innerText = "● Server Trực tuyến";
+            document.getElementById('status').style.color = "#00ff88";
+            client.subscribe(topicStatus); 
+            client.subscribe(topicData); 
+            client.subscribe(topicDevice); 
+        });
+
+        client.on('message', (topic, message) => {
+            const msg = message.toString();
+
+            if (topic === topicDevice) {
+                const espStatusBox = document.getElementById('esp-connection');
+                if (msg === "ON") {
+                    espStatusBox.innerText = "TRẠM SẠC: ON";
+                    espStatusBox.style.color = "#00ff88";          
+                    espStatusBox.style.borderColor = "#00ff88";    
+                } else if (msg === "OFF") {
+                    espStatusBox.innerText = "TRẠM SẠC: OFF";
+                    espStatusBox.style.color = "#ff5252";          
+                    espStatusBox.style.borderColor = "#ff5252";    
+                }
+            }
+
+            if (topic === topicData) {
+                try {
+                    const data = JSON.parse(msg);
+                    const powerInW = data.power / 1000.0;
+                    document.getElementById('web-vout').innerText = data.vout.toFixed(2) + " V";
+                    document.getElementById('web-curr').innerText = data.curr.toFixed(0) + " mA";
+                    document.getElementById('web-power').innerText = powerInW.toFixed(2) + " W";
+                    
+                    if(data.time !== undefined) {
+                        document.getElementById('web-time').innerText = data.time + " Phút";
+                    }
+                } catch (e) {
+                    console.error(e);
+                }
+            }
+
+            if (topic === topicStatus) {
+                const icon = document.getElementById('icon');
+                const btnSlow = document.getElementById('btn-slow');
+                const btnFast = document.getElementById('btn-fast');
+                const btnOff = document.getElementById('btn-off');
+                const telemetryBox = document.getElementById('telemetry-box');
+                const btnChangeStation = document.getElementById('btn-change-station');
+                
+                if (msg === "RUNNING") {
+                    icon.innerText = "⚡"; 
+                    btnSlow.style.display = "none";
+                    btnFast.style.display = "none";
+                    telemetryBox.style.display = "grid"; 
+                    btnOff.style.display = "block"; 
+                    btnChangeStation.style.display = "none";
+                } 
+                else if (msg === "STANDBY") {
+                    icon.innerText = "🔌"; 
+                    btnSlow.style.display = "block";
+                    btnFast.style.display = "block";
+                    telemetryBox.style.display = "none"; 
+                    btnOff.style.display = "none"; 
+                    btnChangeStation.style.display = "inline-flex";
+                    
+                    document.getElementById('web-vout').innerText = "0.00 V";
+                    document.getElementById('web-curr').innerText = "0 mA";
+                    document.getElementById('web-power').innerText = "0.00 W";
+                    document.getElementById('web-time').innerText = "0 Phút"; 
+                }
+            }
+        });
+    }
+
+    function sendControl(mode) {
+        if (client && client.connected) {
+            client.publish(topicControl, mode, { retain: true });
+        }
+    }
+
+    function goBack() {
+        if (client) { client.end(); }
+        const espStatusBox = document.getElementById('esp-connection');
+        espStatusBox.innerText = "TRẠM SẠC: CHECKING...";
+        espStatusBox.style.color = "#888";
+        espStatusBox.style.borderColor = "#444";
+        
+        document.getElementById('main-control-screen').style.display = "none";
+        document.getElementById('station-select-screen').style.display = "block";
+    }
+</script>
+</body>
+</html>
