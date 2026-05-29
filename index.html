@@ -20,6 +20,9 @@
         .btn-auth { width: 100%; padding: 14px; background: linear-gradient(145deg, #0077ff, #0055ff); border: none; border-radius: 8px; color: white; font-weight: bold; font-size: 15px; cursor: pointer; transition: 0.3s; margin-top: 10px; }
         .btn-auth:hover { box-shadow: 0 0 15px rgba(0, 119, 255, 0.4); }
         .auth-toggle { font-size: 13px; color: #00d4ff; cursor: pointer; margin-top: 15px; display: inline-block; }
+        
+        /* CSS CHO DÒNG CHỮ BÁO LỖI TẠI CHỖ */
+        .error-message { font-size: 13px; color: #ff5252; margin-top: 15px; font-weight: 500; min-height: 18px; }
 
         /* CSS CHO MÀN HÌNH CHỌN TRẠM SẠC */
         #station-select-screen { display: none; }
@@ -55,8 +58,8 @@
 
 <div class="card auth-screen" id="login-screen">
     <div class="charging-icon">🔒</div>
-    <h2>ĐĂNG NHẬP CLOUD</h2>
-    <p style="color: #888; font-size: 13px; margin-bottom: 20px;">Đồng bộ dữ liệu tài khoản toàn cầu</p>
+    <h2>ĐĂNG NHẬP</h2>
+    <div style="margin-bottom: 20px;"></div>
     
     <div class="input-group">
         <label>Tên tài khoản</label>
@@ -67,13 +70,16 @@
         <input type="password" id="login-pass" placeholder="Nhập mật khẩu">
     </div>
     <button class="btn-auth" id="btn-submit-login" onclick="handleLogin()">Đăng Nhập</button>
-    <div class="auth-toggle" onclick="switchAuth('register')">Chưa có tài khoản? Đăng ký đám mây</div>
+    
+    <div id="login-error" class="error-message"></div>
+    
+    <div class="auth-toggle" onclick="switchAuth('register')">Chưa có tài khoản? Đăng ký</div>
 </div>
 
 <div class="card auth-screen" id="register-screen" style="display: none;">
     <div class="charging-icon">📝</div>
-    <h2>ĐĂNG KÝ CLOUD</h2>
-    <p style="color: #888; font-size: 13px; margin-bottom: 20px;">Lưu tài khoản lên Server Shiftr</p>
+    <h2>ĐĂNG KÝ</h2>
+    <p style="color: #888; font-size: 13px; margin-bottom: 20px;">Tạo tài khoản quản trị mới</p>
     
     <div class="input-group">
         <label>Tên tài khoản mới</label>
@@ -83,7 +89,10 @@
         <label>Mật khẩu</label>
         <input type="password" id="reg-pass" placeholder="Nhập mật khẩu">
     </div>
-    <button class="btn-auth" onclick="handleRegister()">Tạo Tài Khoản Cloud</button>
+    <button class="btn-auth" onclick="handleRegister()">Tạo Tài Khoản</button>
+    
+    <div id="reg-error" class="error-message"></div>
+    
     <div class="auth-toggle" onclick="switchAuth('login')">Đã có tài khoản? Quay lại đăng nhập</div>
 </div>
 
@@ -93,11 +102,11 @@
     <h2>HỆ THỐNG TRẠM SẠC</h2>
     <p style="color: #888; font-size: 14px; margin-bottom: 30px;">Xin chào quản trị viên đám mây!</p>
     
-    <button class="station-btn" onclick="selectStation('tramsac1', 'TRẠM SẠC SỐ 1')">
+    <button class="station-btn" style="width: 100%; background: linear-gradient(145deg, #333, #222); border: 1px solid #444; padding: 15px; border-radius: 12px; color: white; font-weight: bold; margin-bottom: 15px; cursor: pointer; transition: 0.3s; display: flex; justify-content: space-between; align-items: center;" onclick="selectStation('tramsac1', 'TRẠM SẠC SỐ 1')">
         <span>🔹 Trạm Sạc Số 1</span>
         <span style="font-size: 12px; color: #888; background: #111; padding: 3px 8px; border-radius: 20px;">ID: tramsac1</span>
     </button>
-    <button class="station-btn" onclick="selectStation('tramsac2', 'TRẠM SẠC SỐ 2')">
+    <button class="station-btn" style="width: 100%; background: linear-gradient(145deg, #333, #222); border: 1px solid #444; padding: 15px; border-radius: 12px; color: white; font-weight: bold; margin-bottom: 15px; cursor: pointer; transition: 0.3s; display: flex; justify-content: space-between; align-items: center;" onclick="selectStation('tramsac2', 'TRẠM SẠC SỐ 2')">
         <span>🔹 Trạm Sạc Số 2</span>
         <span style="font-size: 12px; color: #888; background: #111; padding: 3px 8px; border-radius: 20px;">ID: tramsac2</span>
     </button>
@@ -126,7 +135,6 @@
 </div>
 
 <script>
-    // Cấu hình mạng MQTT Broker dùng chung cho cả xác thực tài khoản và điều khiển
     const broker = "wss://tramsac2cu2.cloud.shiftr.io"; 
     const options = {
         clientId: "web_client_" + Math.random().toString(16).substr(2, 4),
@@ -134,11 +142,14 @@
         password: 'OYWScA8JD6HIfrQL'  
     };
 
-    // Kết nối MQTT ngay khi mở trang để sẵn sàng check tài khoản trên Cloud
-    const authClient = mqtt.connect(broker, options);
-    let authTimeout = null; // Biến quản lý bộ đếm giờ kiểm tra đăng nhập
+    let authClient = null; 
+    let authTimeout = null; 
 
     function switchAuth(type) {
+        // Xóa thông báo lỗi cũ khi chuyển đổi qua lại giữa Đăng ký/Đăng nhập
+        document.getElementById('login-error').innerText = "";
+        document.getElementById('reg-error').innerText = "";
+
         if(type === 'register') {
             document.getElementById('login-screen').style.display = 'none';
             document.getElementById('register-screen').style.display = 'block';
@@ -148,47 +159,61 @@
         }
     }
 
-    // ĐĂNG KÝ: Bắn mật khẩu lên chủ đề riêng biệt dạng Retain
+    // ĐĂNG KÝ
     function handleRegister() {
         const user = document.getElementById('reg-user').value.trim();
         const pass = document.getElementById('reg-pass').value.trim();
+        const errBox = document.getElementById('reg-error');
+        errBox.innerText = ""; // Reset lỗi
 
-        if(!user || !pass) { alert('Vui lòng điền đầy đủ thông tin!'); return; }
+        if(!user || !pass) { errBox.innerText = "⚠️ Vui lòng điền đầy đủ thông tin!"; return; }
         
-        authClient.publish('tramsac/users/' + user, pass, { retain: true, qos: 1 });
-        alert('Đăng ký tài khoản trên Cloud thành công!');
-        switchAuth('login');
+        const tempRegClient = mqtt.connect(broker, options);
+        
+        tempRegClient.on('connect', () => {
+            tempRegClient.publish('tramsac/users/' + user, pass, { retain: true, qos: 1 }, () => {
+                tempRegClient.end(); 
+                alert('Đăng ký tài khoản thành công!');
+                switchAuth('login');
+            });
+        });
     }
 
-    // ĐĂNG NHẬP CLOUD - ĐÃ ĐỒNG BỘ FIX HOÀN TOÀN LỖI POPUP KHÔNG TỒN TẠI
+    // ĐĂNG NHẬP
     function handleLogin() {
         const user = document.getElementById('login-user').value.trim();
         const pass = document.getElementById('login-pass').value.trim();
+        const errBox = document.getElementById('login-error');
+        errBox.innerText = ""; // Reset lỗi cũ trước khi check
 
-        if(!user || !pass) { alert('Vui lòng nhập tài khoản và mật khẩu!'); return; }
+        if(!user || !pass) { errBox.innerText = "⚠️ Vui lòng nhập tài khoản và mật khẩu!"; return; }
         
         const targetTopic = 'tramsac/users/' + user;
         document.getElementById('btn-submit-login').innerText = "Đang kiểm tra...";
         
-        authClient.subscribe(targetTopic);
+        if (authClient) { authClient.end(); }
+        authClient = mqtt.connect(broker, options);
 
-        // Thiết lập sự kiện bắt gói tin mật khẩu đổ về từ Cloud
+        authClient.on('connect', () => {
+            authClient.subscribe(targetTopic);
+        });
+
         const checkAuth = (topic, message) => {
             if(topic === targetTopic) {
                 const cloudPassword = message.toString();
                 
-                // XÓA BỘ ĐẾM GIỜ NGAY LẬP TỨC KHI CÓ PHẢN HỒI TỪ SERVER
                 if (authTimeout) { clearTimeout(authTimeout); authTimeout = null; }
 
                 authClient.unsubscribe(targetTopic); 
                 authClient.removeListener('message', checkAuth);
+                authClient.end(); 
 
                 if(cloudPassword === pass) {
-                    // Đúng mật khẩu -> Mở khóa giao diện và chuyển trang
                     document.getElementById('login-screen').style.display = 'none';
                     document.getElementById('station-select-screen').style.display = 'block';
                 } else {
-                    alert('Mật khẩu đám mây không chính xác!');
+                    // THAY THẾ ALERT BẰNG CHỮ BÁO LỖI TRÊN Ô ĐĂNG KÝ
+                    errBox.innerText = "❌ Mật khẩu không chính xác!";
                     document.getElementById('btn-submit-login').innerText = "Đăng Nhập";
                 }
             }
@@ -196,15 +221,17 @@
 
         authClient.on('message', checkAuth);
 
-        // Reset bộ đếm cũ đề phòng rác
         if (authTimeout) clearTimeout(authTimeout);
 
-        // Kích hoạt bộ đếm giờ ngầm bảo vệ (Sau 4 giây không thấy dữ liệu đổ về -> Báo lỗi)
         authTimeout = setTimeout(() => {
-            authClient.unsubscribe(targetTopic);
-            authClient.removeListener('message', checkAuth);
+            if (authClient) {
+                authClient.unsubscribe(targetTopic);
+                authClient.removeListener('message', checkAuth);
+                authClient.end();
+            }
             if(document.getElementById('btn-submit-login').innerText === "Đang kiểm tra...") {
-                alert('Tài khoản này không tồn tại trên Cloud!');
+                // THAY THẾ ALERT BẰNG CHỮ BÁO LỖI TRÊN Ô ĐĂNG KÝ
+                errBox.innerText = "❌ Tài khoản không tồn tại hoặc lỗi mạng!";
                 document.getElementById('btn-submit-login').innerText = "Đăng Nhập";
             }
         }, 4000); 
@@ -213,13 +240,14 @@
     function handleLogout() {
         document.getElementById('login-user').value = "";
         document.getElementById('login-pass').value = "";
+        document.getElementById('login-error').innerText = "";
         document.getElementById('btn-submit-login').innerText = "Đăng Nhập";
         document.getElementById('station-select-screen').style.display = 'none';
         document.getElementById('login-screen').style.display = 'block';
     }
 
     // ==========================================
-    // LOGIC 3: ĐIỀU KHIỂN CHI TIẾT TRẠM SẠC
+    // LOGIC ĐIỀU KHIỂN CHI TIẾT TRẠM SẠC
     // ==========================================
     let client = null;
     let currentStationID = ""; 
