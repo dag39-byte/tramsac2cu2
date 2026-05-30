@@ -19,10 +19,12 @@
         .input-group input:focus { border-color: #0077ff; outline: none; }
         .btn-auth { width: 100%; padding: 14px; background: linear-gradient(145deg, #0077ff, #0055ff); border: none; border-radius: 8px; color: white; font-weight: bold; font-size: 15px; cursor: pointer; transition: 0.3s; margin-top: 10px; }
         .btn-auth:hover { box-shadow: 0 0 15px rgba(0, 119, 255, 0.4); }
+        .btn-auth:disabled { background: #555; cursor: not-allowed; box-shadow: none; }
         .auth-toggle { font-size: 13px; color: #00d4ff; cursor: pointer; margin-top: 15px; display: inline-block; }
         
-        /* CSS CHO DÒNG CHỮ BÁO LỖI TẠI CHỖ */
-        .error-message { font-size: 13px; color: #ff5252; margin-top: 15px; font-weight: 500; min-height: 18px; }
+        /* CSS CHO DÒNG CHỮ BÁO LỖI / THÀNH CÔNG TẠI CHỖ */
+        .error-message { font-size: 13px; color: #ff5252; margin-top: 15px; font-weight: 500; min-height: 18px; text-align: center; }
+        .success-message { font-size: 13px; color: #00ff88; margin-top: 15px; font-weight: 500; min-height: 18px; text-align: center; }
 
         /* CSS CHO MÀN HÌNH CHỌN TRẠM SẠC */
         #station-select-screen { display: none; }
@@ -79,7 +81,7 @@
 <div class="card auth-screen" id="register-screen" style="display: none;">
     <div class="charging-icon">📝</div>
     <h2>ĐĂNG KÝ</h2>
-    <p style="color: #888; font-size: 13px; margin-bottom: 20px;">Tạo tài khoản quản trị mới</p>
+    <div style="margin-bottom: 20px;"></div>
     
     <div class="input-group">
         <label>Tên tài khoản mới</label>
@@ -89,7 +91,7 @@
         <label>Mật khẩu</label>
         <input type="password" id="reg-pass" placeholder="Nhập mật khẩu">
     </div>
-    <button class="btn-auth" onclick="handleRegister()">Tạo Tài Khoản</button>
+    <button class="btn-auth" id="btn-submit-reg" onclick="handleRegister()">Tạo Tài Khoản</button>
     
     <div id="reg-error" class="error-message"></div>
     
@@ -100,7 +102,7 @@
     <button class="logout-btn" onclick="handleLogout()">Đăng xuất ↩</button>
     <div class="charging-icon" style="clear: both; padding-top: 10px;">🔌</div>
     <h2>HỆ THỐNG TRẠM SẠC</h2>
-    <p style="color: #888; font-size: 14px; margin-bottom: 30px;">Xin chào quản trị viên đám mây!</p>
+    <p style="color: #888; font-size: 14px; margin-bottom: 30px;">Xin chào quản trị viên!</p>
     
     <button class="station-btn" style="width: 100%; background: linear-gradient(145deg, #333, #222); border: 1px solid #444; padding: 15px; border-radius: 12px; color: white; font-weight: bold; margin-bottom: 15px; cursor: pointer; transition: 0.3s; display: flex; justify-content: space-between; align-items: center;" onclick="selectStation('tramsac1', 'TRẠM SẠC SỐ 1')">
         <span>🔹 Trạm Sạc Số 1</span>
@@ -115,7 +117,7 @@
 <div class="card" id="main-control-screen">
     <button id="btn-change-station" class="back-btn" onclick="goBack()">◀ Đổi trạm</button>
     <div class="charging-icon" id="icon">🔌</div>
-    <h2 id="station-title">TRẠM SẠC 2 CỦ</h2>
+    <h2 id="station-title">TRẠM SẠC</h2>
     
     <div id="status">Đang kết nối Server...</div>
     <div class="mode-display" id="esp-connection" style="color: #888; border-color: #444;">TRẠM SẠC: CHECKING...</div>
@@ -146,9 +148,9 @@
     let authTimeout = null; 
 
     function switchAuth(type) {
-        // Xóa thông báo lỗi cũ khi chuyển đổi qua lại giữa Đăng ký/Đăng nhập
         document.getElementById('login-error').innerText = "";
         document.getElementById('reg-error').innerText = "";
+        document.getElementById('reg-error').className = "error-message";
 
         if(type === 'register') {
             document.getElementById('login-screen').style.display = 'none';
@@ -159,23 +161,58 @@
         }
     }
 
-    // ĐĂNG KÝ
+    // ĐĂNG KÝ (FIX HOÀN TOÀN LỖI KẸT "ĐANG XỬ LÝ...")
     function handleRegister() {
         const user = document.getElementById('reg-user').value.trim();
         const pass = document.getElementById('reg-pass').value.trim();
         const errBox = document.getElementById('reg-error');
-        errBox.innerText = ""; // Reset lỗi
+        const btnReg = document.getElementById('btn-submit-reg');
+        
+        errBox.innerText = ""; 
+        errBox.className = "error-message"; 
 
         if(!user || !pass) { errBox.innerText = "⚠️ Vui lòng điền đầy đủ thông tin!"; return; }
         
+        btnReg.innerText = "Đang xử lý...";
+        btnReg.disabled = true; 
+
         const tempRegClient = mqtt.connect(broker, options);
         
+        const regTimeout = setTimeout(() => {
+            tempRegClient.end(true); 
+            btnReg.innerText = "Tạo Tài Khoản";
+            btnReg.disabled = false;
+            errBox.innerText = "❌ Lỗi kết nối Server! Vui lòng thử lại.";
+        }, 4000);
+
         tempRegClient.on('connect', () => {
-            tempRegClient.publish('tramsac/users/' + user, pass, { retain: true, qos: 1 }, () => {
+            tempRegClient.publish('tramsac/users/' + user, pass, { retain: true, qos: 1 }, (err) => {
+                clearTimeout(regTimeout);
                 tempRegClient.end(); 
-                alert('Đăng ký tài khoản thành công!');
-                switchAuth('login');
+
+                if (err) {
+                    btnReg.innerText = "Tạo Tài Khoản";
+                    btnReg.disabled = false;
+                    errBox.innerText = "❌ Lỗi lưu dữ liệu: " + err.message;
+                } else {
+                    errBox.className = "success-message";
+                    errBox.innerText = "✔️ Đăng ký thành công! Đang chuyển hướng...";
+                    
+                    setTimeout(() => {
+                        btnReg.innerText = "Tạo Tài Khoản";
+                        btnReg.disabled = false;
+                        switchAuth('login');
+                    }, 1500);
+                }
             });
+        });
+
+        tempRegClient.on('error', (err) => {
+            clearTimeout(regTimeout);
+            tempRegClient.end(true);
+            btnReg.innerText = "Tạo Tài Khoản";
+            btnReg.disabled = false;
+            errBox.innerText = "❌ Server từ chối kết nối!";
         });
     }
 
@@ -184,12 +221,14 @@
         const user = document.getElementById('login-user').value.trim();
         const pass = document.getElementById('login-pass').value.trim();
         const errBox = document.getElementById('login-error');
-        errBox.innerText = ""; // Reset lỗi cũ trước khi check
+        const btnLogin = document.getElementById('btn-submit-login');
+        errBox.innerText = ""; 
 
         if(!user || !pass) { errBox.innerText = "⚠️ Vui lòng nhập tài khoản và mật khẩu!"; return; }
         
         const targetTopic = 'tramsac/users/' + user;
-        document.getElementById('btn-submit-login').innerText = "Đang kiểm tra...";
+        btnLogin.innerText = "Đang kiểm tra...";
+        btnLogin.disabled = true;
         
         if (authClient) { authClient.end(); }
         authClient = mqtt.connect(broker, options);
@@ -207,14 +246,15 @@
                 authClient.unsubscribe(targetTopic); 
                 authClient.removeListener('message', checkAuth);
                 authClient.end(); 
+                
+                btnLogin.disabled = false;
 
                 if(cloudPassword === pass) {
                     document.getElementById('login-screen').style.display = 'none';
                     document.getElementById('station-select-screen').style.display = 'block';
                 } else {
-                    // THAY THẾ ALERT BẰNG CHỮ BÁO LỖI TRÊN Ô ĐĂNG KÝ
                     errBox.innerText = "❌ Mật khẩu không chính xác!";
-                    document.getElementById('btn-submit-login').innerText = "Đăng Nhập";
+                    btnLogin.innerText = "Đăng Nhập";
                 }
             }
         };
@@ -229,10 +269,10 @@
                 authClient.removeListener('message', checkAuth);
                 authClient.end();
             }
-            if(document.getElementById('btn-submit-login').innerText === "Đang kiểm tra...") {
-                // THAY THẾ ALERT BẰNG CHỮ BÁO LỖI TRÊN Ô ĐĂNG KÝ
+            btnLogin.disabled = false;
+            if(btnLogin.innerText === "Đang kiểm tra...") {
                 errBox.innerText = "❌ Tài khoản không tồn tại hoặc lỗi mạng!";
-                document.getElementById('btn-submit-login').innerText = "Đăng Nhập";
+                btnLogin.innerText = "Đăng Nhập";
             }
         }, 4000); 
     }
