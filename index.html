@@ -3,405 +3,733 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Hệ Thống Trạm Sạc Thông Minh - Shiftr.io</title>
+    <title>Trạm Sạc Tự Động</title>
     <script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
     <style>
-        body { font-family: 'Segoe UI', Tahoma, sans-serif; background-color: #121212; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; color: white; }
-        .card { background: #1e1e1e; padding: 30px; border-radius: 20px; box-shadow: 0 15px 35px rgba(0,0,0,0.5); text-align: center; width: 360px; border: 1px solid #333; }
-        h2 { margin-bottom: 5px; color: #00d4ff; }
-        #status { font-size: 13px; margin-bottom: 20px; color: #aaa; }
+        body { font-family: 'Segoe UI', Tahoma, sans-serif; background-color: #f4f6f9; margin: 0; color: #333333; display: flex; height: 100vh; overflow: hidden; }
+        .sidebar { width: 240px; background-color: #ffffff; display: flex; flex-direction: column; padding: 20px 0; border-right: 1px solid #e0e0e0; justify-content: space-between; box-shadow: 2px 0 5px rgba(0,0,0,0.03); flex-shrink: 0; }
+        .sidebar-top { display: flex; flex-direction: column; }
+        .logo { font-size: 20px; font-weight: bold; padding: 0 25px; margin-bottom: 30px; color: #0077ff; display: flex; align-items: center; gap: 8px; }
+        .logo span { color: #333333; font-size: 14px; letter-spacing: 0.5px; font-weight: 700; text-transform: uppercase; }
+        .menu-item { display: flex; align-items: center; gap: 15px; padding: 14px 25px; color: #555555; font-size: 14px; font-weight: 600; cursor: pointer; transition: 0.2s; border-left: 4px solid transparent; }
+        .menu-item:hover { color: #0077ff; background-color: #f0f4f8; }
+        .menu-item.active { color: #0077ff; background-color: #e6f0ff; border-left-color: #0077ff; }
+        .menu-icon { font-size: 18px; width: 20px; text-align: center; }
+        .sidebar-banner { margin: 15px; padding: 15px; background: linear-gradient(135deg, #e6f0ff, #cce2ff); border: 1px solid #b3d4ff; border-radius: 12px; text-align: center; font-size: 12px; font-weight: 500; color: #0055cc; }
+        .sidebar-banner button { width: 100%; margin-top: 10px; padding: 8px; background: #ffffff; border: 1px solid #0077ff; border-radius: 20px; color: #0077ff; font-weight: bold; cursor: pointer; transition: 0.2s; }
+        .sidebar-banner button:hover { background: #0077ff; color: #ffffff; }
+        .main-container { flex: 1; display: flex; flex-direction: column; background-color: #f4f6f9; overflow: hidden; }
+        .header { height: 70px; background-color: #ffffff; display: flex; justify-content: space-between; align-items: center; padding: 0 30px; border-bottom: 1px solid #e0e0e0; box-shadow: 0 2px 4px rgba(0,0,0,0.01); flex-shrink: 0; }
+        .server-status { font-size: 13px; font-weight: 500; display: flex; align-items: center; gap: 8px; color: #666666; }
+        .status-dot { width: 9px; height: 9px; border-radius: 50%; display: inline-block; }
+        .dot-connecting { background-color: #ffaa00; box-shadow: 0 0 6px #ffaa00; }
+        .dot-online { background-color: #00cc66; box-shadow: 0 0 6px #00cc66; }
+        .dot-offline { background-color: #ff3b30; box-shadow: 0 0 6px #ff3b30; }
+        .content-body { flex: 1; padding: 30px; overflow-y: auto; display: flex; justify-content: center; align-items: flex-start; }
+        .app-view { display: none; width: 100%; max-width: 100%; } 
+        .app-view.active { display: block; }
+        .auth-card { width: 100%; max-width: 400px; background: #ffffff; padding: 35px; border-radius: 16px; border: 1px solid #e0e0e0; box-shadow: 0 10px 25px rgba(0,0,0,0.05); text-align: center; margin: 40px auto; }
+        .input-group { margin-bottom: 18px; text-align: left; }
+        .input-group label { display: block; font-size: 13px; color: #666666; margin-bottom: 6px; font-weight: 500; }
+        .input-group input { width: 100%; padding: 12px; border-radius: 8px; border: 1px solid #cccccc; background: #ffffff; color: #333333; box-sizing: border-box; font-size: 14px; transition: 0.2s; }
+        .input-group input:focus { border-color: #0077ff; outline: none; box-shadow: 0 0 0 3px rgba(0,119,255,0.1); }
+        .btn-primary { width: 100%; padding: 14px; background: #0077ff; border: none; border-radius: 20px; color: white; font-weight: bold; font-size: 15px; cursor: pointer; transition: 0.2s; box-shadow: 0 4px 12px rgba(0,119,255,0.2); }
+        .btn-primary:hover { background: #0055cc; }
+        .stations-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-top: 20px; max-width: 850px; }
+        .station-card { background: #ffffff; border: 1px solid #e0e0e0; border-radius: 12px; padding: 25px; cursor: pointer; transition: 0.2s; text-align: left; position: relative; box-shadow: 0 4px 6px rgba(0,0,0,0.01); }
+        .station-card:hover { border-color: #0077ff; background: #fcfdfe; transform: translateY(-3px); box-shadow: 0 10px 20px rgba(0,0,0,0.05); }
+        .station-card h3 { margin: 0; color: #0077ff; font-size: 18px; }
+        .station-tag { position: absolute; top: 25px; right: 25px; font-size: 11px; background: #f0f4f8; padding: 4px 10px; border-radius: 20px; color: #666666; font-weight: 500; }
+        .hw-status-badge { display: inline-block; margin-top: 10px; font-size: 12px; font-weight: bold; padding: 4px 10px; border-radius: 4px; }
+        .hw-status-badge.online { background: #e6fcf5; color: #00cc66; }
+        .hw-status-badge.offline { background: #fff5f5; color: #ff3b30; }
+        .control-panel { background: #ffffff; border: 1px solid #e0e0e0; border-radius: 16px; padding: 30px; text-align: center; box-shadow: 0 10px 25px rgba(0,0,0,0.03); max-width: 650px; margin: 0 auto; }
+        .lcd-telemetry { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin: 20px 0; text-align: left; }
+        .telemetry-card { background: #fafafa; border: 1px solid #eaeaea; border-radius: 12px; padding: 15px 20px; display: flex; flex-direction: column; justify-content: center; position: relative; }
+        .telemetry-card .param { font-size: 12px; color: #666666; font-weight: 600; margin-bottom: 5px; text-transform: uppercase; letter-spacing: 0.5px; }
+        .telemetry-card .val { font-size: 22px; font-weight: bold; color: #111111; text-align: left; font-family: 'Segoe UI', sans-serif; }
+        #web-vout { color: #00cc66; } 
+        #web-curr { color: #0077ff; } 
+        #web-power { color: #ffb300; } 
+        #web-time { color: #ff5252; } 
         
-        /* CSS CHO KHỐI ĐĂNG NHẬP / ĐĂNG KÝ */
-        .auth-screen { display: block; }
-        .input-group { margin-bottom: 15px; text-align: left; }
-        .input-group label { display: block; font-size: 13px; color: #aaa; margin-bottom: 5px; }
-        .input-group input { width: 100%; padding: 12px; border-radius: 8px; border: 1px solid #444; background: #252525; color: white; box-sizing: border-box; font-size: 14px; }
-        .input-group input:focus { border-color: #0077ff; outline: none; }
-        .btn-auth { width: 100%; padding: 14px; background: linear-gradient(145deg, #0077ff, #0055ff); border: none; border-radius: 8px; color: white; font-weight: bold; font-size: 15px; cursor: pointer; transition: 0.3s; margin-top: 10px; }
-        .btn-auth:hover { box-shadow: 0 0 15px rgba(0, 119, 255, 0.4); }
-        .btn-auth:disabled { background: #555; cursor: not-allowed; box-shadow: none; }
-        .auth-toggle { font-size: 13px; color: #00d4ff; cursor: pointer; margin-top: 15px; display: inline-block; }
+        .btn-group { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-top: 20px; position: relative; }
+        .btn-mode { height: 52px; padding: 15px; border-radius: 25px; font-weight: bold; font-size: 14px; border: 1px solid #e0e0e0; cursor: pointer; transition: all 0.3s ease-in-out; opacity: 1; visibility: visible; box-sizing: border-box; }
+        .btn-slow { background: #ffffff; color: #333333; }
+        .btn-slow:hover { background: #f5f5f5; border-color: #cccccc; }
+        .btn-fast { background: #0077ff; color: white; border: none; box-shadow: 0 4px 12px rgba(0,119,255,0.2); }
+        .btn-fast:hover { background: #0055cc; }
         
-        /* CSS CHO DÒNG CHỮ BÁO LỖI / THÀNH CÔNG TẠI CHỖ */
-        .error-message { font-size: 13px; color: #ff5252; margin-top: 15px; font-weight: 500; min-height: 18px; text-align: center; }
-        .success-message { font-size: 13px; color: #00ff88; margin-top: 15px; font-weight: 500; min-height: 18px; text-align: center; }
+        .btn-off { grid-column: span 2; background: #ff3b30; color: white; border: none; box-shadow: 0 4px 12px rgba(255,59,48,0.2); opacity: 0; visibility: hidden; height: 0; padding: 0 !important; margin: 0; overflow: hidden; font-size: 14px; font-weight: bold; border-radius: 25px !important; text-align: center; transition: all 0.3s ease-in-out; }
+        .btn-off:hover { background: #d62218; }
+        .btn-mode.disabled-offline { opacity: 0.25 !important; background-color: #eaeaea !important; color: #888888 !important; pointer-events: none !important; cursor: not-allowed !important; box-shadow: none !important; border: 1px solid #cccccc !important; }
+        
+        /* Modal QR Thanh Toán */
+        .modal { display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.5); align-items: center; justify-content: center; }
+        .modal-content { background-color: #ffffff; padding: 30px; border-radius: 16px; max-width: 400px; width: 90%; text-align: center; box-shadow: 0 10px 30px rgba(0,0,0,0.2); animation: animatetop 0.3s; }
+        @keyframes animatetop { from {top:-300px; opacity:0} to {top:0; opacity:1} }
+        .qr-img { width: 220px; height: 220px; margin: 15px auto; border: 1px solid #eaeaea; padding: 5px; border-radius: 8px; }
+        .bill-details { text-align: left; background: #f9f9f9; padding: 12px; border-radius: 8px; font-size: 14px; margin-bottom: 20px; }
+        .bill-row { display: flex; justify-content: space-between; margin-bottom: 6px; }
+        .bill-row .lbl { color: #666; }
+        .bill-row .val { font-weight: bold; color: #111; }
 
-        /* CSS CHO MÀN HÌNH CHỌN TRẠM SẠC */
-        #station-select-screen { display: none; }
-        .station-btn { width: 100%; background: linear-gradient(145deg, #333, #222); border: 1px solid #444; padding: 15px; border-radius: 12px; color: white; font-weight: bold; margin-bottom: 15px; cursor: pointer; transition: 0.3s; display: flex; justify-content: space-between; align-items: center; }
-        .station-btn:hover { background: #0077ff; border-color: #0077ff; transform: translateY(-2px); }
-        .logout-btn { background: none; border: none; color: #ff5252; cursor: pointer; font-size: 13px; float: right; padding: 0; font-weight: bold;}
+        .table-container { background: #ffffff; border-radius: 12px; border: 1px solid #e0e0e0; overflow: hidden; box-shadow: 0 4px 15px rgba(0,0,0,0.02); width: 100%; margin-bottom: 25px; }
+        .table-header-box { padding: 20px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #e0e0e0; background: #fafafa; }
+        .table-wrapper { width: 100%; } 
+        
+        table { width: 100%; border-collapse: collapse; text-align: left; font-size: 13px; table-layout: fixed; } 
+        th { background-color: #f5f5f5; color: #555555; padding: 15px 10px; font-weight: 600; border-bottom: 1px solid #e0e0e0; position: sticky; top: 0; }
+        td { padding: 15px 10px; border-bottom: 1px solid #eeeeee; color: #444444; word-break: break-word; } 
+        tr:hover td { background-color: #f9fbff; }
+        
+        /* Tối ưu lại chiều rộng cột để thêm cột mã giao dịch */
+        #table-hist th:nth-child(1), #table-hist td:nth-child(1) { width: 8%; } 
+        #table-hist th:nth-child(2), #table-hist td:nth-child(2) { width: 12%; } 
+        #table-hist th:nth-child(3), #table-hist td:nth-child(3) { width: 8%; } 
+        #table-hist th:nth-child(4), #table-hist td:nth-child(4) { width: 13%; } 
+        #table-hist th:nth-child(5), #table-hist td:nth-child(5) { width: 13%; } 
+        #table-hist th:nth-child(6), #table-hist td:nth-child(6) { width: 9%; } 
+        #table-hist th:nth-child(7), #table-hist td:nth-child(7) { width: 9%; } 
+        #table-hist th:nth-child(8), #table-hist td:nth-child(8) { width: 8%; } 
+        #table-hist th:nth-child(9), #table-hist td:nth-child(9) { width: 11%; }
+        #table-hist th:nth-child(10), #table-hist td:nth-child(10) { width: 9%; }
 
-        /* CSS CHO MÀN HÌNH ĐIỀU KHIỂN CHI TIẾT */
-        #main-control-screen { display: none; }
-        .mode-display { font-size: 18px; margin: 15px 0 25px 0; padding: 12px; border-radius: 12px; background: #252525; border: 1px dashed #444; font-weight: bold; transition: 0.3s; }
-        .lcd-telemetry { display: none; grid-template-columns: 1.3fr 0.7fr; gap: 12px; background: #151515; padding: 15px; border-radius: 12px; margin-bottom: 20px; border: 1px solid #222; text-align: left; font-family: 'Courier New', Courier, monospace; }
-        .param { font-size: 14px; color: #aaa; }
-        .val { font-size: 16px; font-weight: bold; color: #fff; text-align: right; }
-        .highlight { color: #00ff88; }
-        .highlight-power { color: #ffeb3b; }
-        .highlight-time { color: #ff9800; }
-
-        .btn-group { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-top: 15px; clear: both; }
-        button.action-btn { border: none; padding: 18px 10px; border-radius: 12px; cursor: pointer; font-weight: bold; font-size: 14px; transition: 0.3s; color: white; }
-        .btn-slow { background: linear-gradient(145deg, #424242, #212121); border: 1px solid #616161; }
-        .btn-slow:hover { background: #616161; }
-        .btn-fast { background: linear-gradient(145deg, #0077ff, #0055ff); box-shadow: 0 0 15px rgba(0, 119, 255, 0.4); }
-        .btn-fast:hover { box-shadow: 0 0 25px rgba(0, 119, 255, 0.6); transform: scale(1.05); }
-        .btn-off { display: none; grid-column: span 2; background: linear-gradient(145deg, #d32f2f, #b71c1c); box-shadow: 0 0 10px rgba(211, 47, 47, 0.3); padding: 15px 10px; }
-        .btn-off:hover { background: #d32f2f; box-shadow: 0 0 20px rgba(211, 47, 47, 0.5); }
-
-        .charging-icon { font-size: 40px; margin-bottom: 10px; clear: both; }
-        .back-btn { background: none; border: none; color: #888; cursor: pointer; font-size: 13px; display: inline-flex; align-items: center; gap: 5px; float: left; padding: 0;}
-        .back-btn:hover { color: #ff5252; }
+        #table-tran th:nth-child(1), #table-tran td:nth-child(1) { width: 10%; } 
+        #table-tran th:nth-child(2), #table-tran td:nth-child(2) { width: 13%; } 
+        #table-tran th:nth-child(3), #table-tran td:nth-child(3) { width: 15%; } 
+        #table-tran th:nth-child(4), #table-tran td:nth-child(4) { width: 10%; } 
+        #table-tran th:nth-child(5), #table-tran td:nth-child(5) { width: 10%; } 
+        #table-tran th:nth-child(6), #table-tran td:nth-child(6) { width: 15%; } 
+        #table-tran th:nth-child(7), #table-tran td:nth-child(7) { width: 15%; } 
+        #table-tran th:nth-child(8), #table-tran td:nth-child(8) { width: 12%; }
     </style>
 </head>
 <body>
 
-<div class="card auth-screen" id="login-screen">
-    <div class="charging-icon">🔒</div>
-    <h2>ĐĂNG NHẬP</h2>
-    <div style="margin-bottom: 20px;"></div>
-    
-    <div class="input-group">
-        <label>Tên tài khoản</label>
-        <input type="text" id="login-user" placeholder="Nhập tài khoản">
-    </div>
-    <div class="input-group">
-        <label>Mật khẩu</label>
-        <input type="password" id="login-pass" placeholder="Nhập mật khẩu">
-    </div>
-    <button class="btn-auth" id="btn-submit-login" onclick="handleLogin()">Đăng Nhập</button>
-    
-    <div id="login-error" class="error-message"></div>
-    
-    <div class="auth-toggle" onclick="switchAuth('register')">Chưa có tài khoản? Đăng ký</div>
-</div>
-
-<div class="card auth-screen" id="register-screen" style="display: none;">
-    <div class="charging-icon">📝</div>
-    <h2>ĐĂNG KÝ</h2>
-    <div style="margin-bottom: 20px;"></div>
-    
-    <div class="input-group">
-        <label>Tên tài khoản mới</label>
-        <input type="text" id="reg-user" placeholder="Tên tài khoản">
-    </div>
-    <div class="input-group">
-        <label>Mật khẩu</label>
-        <input type="password" id="reg-pass" placeholder="Nhập mật khẩu">
-    </div>
-    <button class="btn-auth" id="btn-submit-reg" onclick="handleRegister()">Tạo Tài Khoản</button>
-    
-    <div id="reg-error" class="error-message"></div>
-    
-    <div class="auth-toggle" onclick="switchAuth('login')">Đã có tài khoản? Quay lại đăng nhập</div>
-</div>
-
-<div class="card" id="station-select-screen">
-    <button class="logout-btn" onclick="handleLogout()">Đăng xuất ↩</button>
-    <div class="charging-icon" style="clear: both; padding-top: 10px;">🔌</div>
-    <h2>HỆ THỐNG TRẠM SẠC</h2>
-    <p style="color: #888; font-size: 14px; margin-bottom: 30px;">Xin chào quản trị viên!</p>
-    
-    <button class="station-btn" style="width: 100%; background: linear-gradient(145deg, #333, #222); border: 1px solid #444; padding: 15px; border-radius: 12px; color: white; font-weight: bold; margin-bottom: 15px; cursor: pointer; transition: 0.3s; display: flex; justify-content: space-between; align-items: center;" onclick="selectStation('tramsac1', 'TRẠM SẠC SỐ 1')">
-        <span>🔹 Trạm Sạc Số 1</span>
-        <span style="font-size: 12px; color: #888; background: #111; padding: 3px 8px; border-radius: 20px;">ID: tramsac1</span>
-    </button>
-    <button class="station-btn" style="width: 100%; background: linear-gradient(145deg, #333, #222); border: 1px solid #444; padding: 15px; border-radius: 12px; color: white; font-weight: bold; margin-bottom: 15px; cursor: pointer; transition: 0.3s; display: flex; justify-content: space-between; align-items: center;" onclick="selectStation('tramsac2', 'TRẠM SẠC SỐ 2')">
-        <span>🔹 Trạm Sạc Số 2</span>
-        <span style="font-size: 12px; color: #888; background: #111; padding: 3px 8px; border-radius: 20px;">ID: tramsac2</span>
-    </button>
-</div>
-
-<div class="card" id="main-control-screen">
-    <button id="btn-change-station" class="back-btn" onclick="goBack()">◀ Đổi trạm</button>
-    <div class="charging-icon" id="icon">🔌</div>
-    <h2 id="station-title">TRẠM SẠC</h2>
-    
-    <div id="status">Đang kết nối Server...</div>
-    <div class="mode-display" id="esp-connection" style="color: #888; border-color: #444;">TRẠM SẠC: CHECKING...</div>
-
-    <div class="lcd-telemetry" id="telemetry-box">
-        <div class="param">Điện áp ( V ) :</div><div class="val highlight" id="web-vout">0.00 V</div>
-        <div class="param">Dòng điện ( I ) :</div><div class="val" id="web-curr">0 mA</div>
-        <div class="param">Công suất ( P ) :</div><div class="val highlight-power" id="web-power">0.00 W</div>
-        <div class="param">Thời gian sạc ( T ) :</div><div class="val highlight-time" id="web-time">0 Phút</div>
+    <div class="sidebar">
+        <div class="sidebar-top">
+            <div class="logo">⚡ <span>Trạm Sạc Tự Động</span></div>
+            <div id="sidebar-menu" style="display: none;">
+                <div class="menu-item active" id="menu-station" onclick="switchTab('station')">
+                    <span class="menu-icon">🔌</span> Trạm Sạc
+                </div>
+                <div class="menu-item" id="menu-history" onclick="switchTab('history')">
+                    <span class="menu-icon">📋</span> Lịch Sử Sạc
+                </div>
+                <div class="menu-item" id="menu-transaction" onclick="switchTab('transaction')">
+                    <span class="menu-icon">💳</span> Lịch Sử Giao Dịch
+                </div>
+            </div>
+        </div>
+        <div class="sidebar-auth-box" id="sidebar-auth-box">
+            <div class="sidebar-banner">
+                <span>Đăng nhập để điều khiển và quản lý trạm sạc tự động</span>
+                <button onclick="switchTab('login')">ĐĂNG NHẬP</button>
+            </div>
+        </div>
     </div>
 
-    <div class="btn-group">
-        <button id="btn-slow" class="action-btn btn-slow" onclick="sendControl('SLOW')">SẠC CHẬM</button>
-        <button id="btn-fast" class="action-btn btn-fast" onclick="sendControl('FAST')">SẠC NHANH</button>
-        <button id="btn-off" class="action-btn btn-off" onclick="sendControl('OFF')">TẮT HỆ THỐNG 🛑</button>
+    <div class="main-container">
+        <div class="header">
+            <div id="header-user-greeting" style="font-weight: 600; font-size: 16px; color: #111111;">Hệ Thống Trạm Sạc Tự Động</div>
+            <div class="server-status">
+                <span class="status-dot dot-connecting" id="global-status-dot"></span>
+                <span id="global-status-text">Đang kết nối Server MQTT...</span>
+            </div>
+        </div>
+
+        <div class="content-body">
+            <div id="view-login" class="app-view active">
+                <div class="auth-card">
+                    <h2>ĐĂNG NHẬP</h2>
+                    <div class="input-group"><label>Tên tài khoản</label><input type="text" id="login-user" placeholder="Nhập tài khoản"></div>
+                    <div class="input-group"><label>Mật khẩu</label><input type="password" id="login-pass" placeholder="Nhập mật khẩu"></div>
+                    <button class="btn-primary" onclick="handleLogin()">Đăng Nhập</button>
+                    <div id="login-error" style="color:#ff3b30; font-size:13px; margin-top:15px; font-weight:500;"></div>
+                    <div style="color: #666666; font-size: 13px; margin-top: 22px; cursor: pointer; font-weight: 500;" onclick="switchTab('register')">Chưa có tài khoản? Đăng ký ngay</div>
+                </div>
+            </div>
+
+            <div id="view-register" class="app-view">
+                <div class="auth-card">
+                    <h2>ĐĂNG KÝ HỆ THỐNG</h2>
+                    <div class="input-group"><label>Tài khoản mới</label><input type="text" id="reg-user" placeholder="Tên tài khoản mới"></div>
+                    <div class="input-group"><label>Mật khẩu</label><input type="password" id="reg-pass" placeholder="Tạo mật khẩu bảo mật"></div>
+                    <button class="btn-primary" style="background:#00cc66; box-shadow: 0 4px 12px rgba(0,204,102,0.2);" onclick="handleRegister()">Tạo Tài Khoản</button>
+                    <div id="reg-error" style="color:#ff3b30; font-size:13px; margin-top:15px; font-weight:500;"></div>
+                    <div style="color: #666666; font-size: 13px; margin-top: 22px; cursor: pointer; font-weight: 500;" onclick="switchTab('login')">Đã có tài khoản? Đăng nhập ngay</div>
+                </div>
+            </div>
+
+            <div id="view-station" class="app-view">
+                <h2>Trạm Sạc Tự Động</h2>
+                <p style="color: #666666; font-size: 14px; margin-bottom: 25px;">Chọn trạm sạc khả dụng để bắt đầu:</p>
+                <div class="stations-grid">
+                    <div class="station-card" onclick="selectStation('tramsac1', 'TRẠM SẠC SỐ 1')">
+                        <h3>🔹 Trạm Sạc Số 1</h3>
+                        <span class="station-tag">ID: tramsac1</span>
+                        <div id="hw-tramsac1" class="hw-status-badge offline">OFFLINE 🛑</div>
+                    </div>
+                    <div class="station-card" onclick="selectStation('tramsac2', 'TRẠM SẠC SỐ 2')">
+                        <h3>🔹 Trạm Sạc Số 2</h3>
+                        <span class="station-tag">ID: tramsac2</span>
+                        <div id="hw-tramsac2" class="hw-status-badge offline">OFFLINE 🛑</div>
+                    </div>
+                </div>
+            </div>
+
+            <div id="view-control" class="app-view">
+                <div class="control-panel">
+                    <button style="background:none; border:none; color:#666666; float:left; cursor:pointer; font-size:14px; font-weight:500;" onclick="switchTab('station')">◀ Quay lại danh sách</button>
+                    <h2 id="station-title" style="margin: 0 auto; color:#111111; display:inline-block;">CHI TIẾT TRẠM SẠC</h2>
+                    
+                    <div id="esp-connection" style="margin-top:15px; font-weight:bold; color:#666666;">TRẠM SẠC: CHECKING...</div>
+                    <div id="charging-mode-status" style="margin-top:8px; font-weight:bold; color:#666666; font-size:14px; display:none;">CHẾ ĐỘ: ĐANG CHỜ...</div>
+
+                    <div class="lcd-telemetry" id="telemetry-box" style="margin-top: 30px;">
+                        <div class="telemetry-card"><div class="param">⚡ Điện áp ( V )</div><div class="val" id="web-vout">0.00 V</div></div>
+                        <div class="telemetry-card"><div class="param">🔌 Dòng điện ( I )</div><div class="val" id="web-curr">0 mA</div></div>
+                        <div class="telemetry-card"><div class="param">💡 Công suất ( P )</div><div class="val" id="web-power">0.00 W</div></div>
+                        <div class="telemetry-card"><div class="param">⏱️ Thời gian sạc</div><div class="val" id="web-time">0 Phút</div></div>
+                    </div>
+
+                    <div class="btn-group">
+                        <button id="btn-slow" class="btn-mode btn-slow disabled-offline" onclick="sendControl('SLOW')">SẠC CHẬM</button>
+                        <button id="btn-fast" class="btn-mode btn-fast disabled-offline" onclick="sendControl('FAST')">SẠC NHANH</button>
+                        <button id="btn-off" class="btn-mode btn-off" onclick="sendControl('OFF')">NGẮT SẠC 🛑</button>
+                    </div>
+                </div>
+            </div>
+
+            <div id="view-history" class="app-view">
+                <div class="table-container">
+                    <div class="table-header-box">
+                        <h3 style="margin:0; font-size:16px; color:#111111;" id="history-title-text">📋 Nhật Ký Lịch Sử Sạc Hệ Thống</h3>
+                        <button style="background:#0077ff; border:none; color:white; padding:8px 18px; border-radius:20px; font-size:12px; font-weight:bold; cursor:pointer;" onclick="fetchHistoryFromSheets()">LÀM MỚI 🔄</button>
+                    </div>
+                    <div class="table-wrapper">
+                        <table id="table-hist">
+                            <thead>
+                                <tr><th>Tài khoản</th><th>Trạm sạc</th><th>Chế độ</th><th>Bắt đầu</th><th>Kết thúc</th><th>Thời lượng</th><th>Điện năng</th><th>Số tiền</th><th>Mã giao dịch</th><th>Trạng thái</th></tr>
+                            </thead>
+                            <tbody id="history-data-rows">
+                                <tr><td colspan="10" style="text-align: center; color: #888888; padding: 20px;">Vui lòng bấm làm mới để tải dữ liệu...</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <div id="view-transaction" class="app-view">
+                <div class="table-container">
+                    <div class="table-header-box">
+                        <h3 style="margin:0; font-size:16px; color:#111111;" id="transaction-title-text">💳 Nhật Ký Lịch Sử Giao Dịch Thanh Toán</h3>
+                        <button style="background:#00cc66; border:none; color:white; padding:8px 18px; border-radius:20px; font-size:12px; font-weight:bold; cursor:pointer;" onclick="fetchHistoryFromSheets()">LÀM MỚI 🔄</button>
+                    </div>
+                    <div class="table-wrapper">
+                        <table id="table-tran">
+                            <thead>
+                                <tr><th>Tài khoản</th><th>Trạm sạc</th><th>Thời gian kết thúc</th><th>Thời lượng</th><th>Số tiền</th><th>Nội dung CK</th><th>Mã giao dịch</th><th>Trạng thái</th></tr>
+                            </thead>
+                            <tbody id="transaction-data-rows">
+                                <tr><td colspan="8" style="text-align: center; color: #888888; padding: 20px;">Vui lòng bấm làm mới để tải dữ liệu...</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+        </div>
     </div>
-</div>
+
+    <div id="qrModal" class="modal">
+        <div class="modal-content">
+            <h3 style="margin-top:0; color:#0077ff;">⚡ THANH TOÁN HOÁ ĐƠN</h3>
+            <p style="font-size:13px; color:#666;">Vui lòng quét mã QR ứng dụng Ngân hàng để thanh toán chi phí sạc</p>
+            
+            <img id="qrImage" class="qr-img" src="" alt="Mã QR thanh toán">
+            
+            <div class="bill-details">
+                <div class="bill-row"><span class="lbl">Trạm sạc:</span><span class="val" id="bill-station">-</span></div>
+                <div class="bill-row"><span class="lbl">Thời lượng:</span><span class="val" id="bill-time">0 Phút</span></div>
+                <div class="bill-row"><span class="lbl">Điện năng:</span><span class="val" id="bill-energy">0 Wh</span></div>
+                <div class="bill-row" style="border-top:1px dashed #ddd; margin-top:6px; padding-top:6px;"><span class="lbl" style="color:#00cc66; font-weight:bold;">Tổng tiền:</span><span class="val" id="bill-money" style="color:#00cc66; font-size:16px;">0 đ</span></div>
+            </div>
+            
+            <button class="btn-primary" onclick="closeQRModal()">ĐÃ CHUYỂN KHOẢN THÀNH CÔNG</button>
+        </div>
+    </div>
 
 <script>
-    const broker = "wss://tramsac2cu2.cloud.shiftr.io"; 
+    const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwmqxc5zEZRtbhUaBSmcmi6upDiGNkTs37TSG5xXWMXAKXmSp5FLQzZkLepArjB2Dvz4g/exec"; 
+    const broker = "wss://d45e33c4b1a243678728415fe08b0cc4.s1.eu.hivemq.cloud:8884/mqtt"; 
     const options = {
-        clientId: "web_client_" + Math.random().toString(16).substr(2, 4),
+        clientId: "web_client_main_" + Math.random().toString(16).substr(2, 4),
         username: 'tramsac2cu2', 
-        password: 'OYWScA8JD6HIfrQL'  
+        password: 'DEbbCxKNEQ9fN!j'  
+    };
+
+    const PRICE_PER_WH = 3.858; 
+    
+    // CẤU HÌNH ĐỊA CHỈ NHẬN TIỀN CỦA BẠN QUA VIETQR
+    const BANK_CONFIG = {
+        bankId: "BIDV", 
+        accountNo: "5601721069", 
+        accountName: "DAM VAN DUONG" 
     };
 
     let authClient = null; 
-    let authTimeout = null; 
+    let loginTimeout = null; 
+    let currentUser = ""; 
 
-    function switchAuth(type) {
-        document.getElementById('login-error').innerText = "";
-        document.getElementById('reg-error').innerText = "";
-        document.getElementById('reg-error').className = "error-message";
+    let currentSessionTime = 0; 
+    let totalEnergyWh = 0;      
+    let lastStatusReceived = ""; 
+    let activeChargingMode = ""; 
+    let timeStartString = "";        
+    let currentStationID = ""; 
 
-        if(type === 'register') {
-            document.getElementById('login-screen').style.display = 'none';
-            document.getElementById('register-screen').style.display = 'block';
-        } else {
-            document.getElementById('register-screen').style.display = 'none';
-            document.getElementById('login-screen').style.display = 'block';
-        }
+    let isManualShutdown = false; 
+    let triggerType = "AUTO_OFF"; 
+
+    function switchTab(tabName) {
+        document.querySelectorAll('.app-view').forEach(view => view.classList.remove('active'));
+        document.querySelectorAll('.menu-item').forEach(item => item.classList.remove('active'));
+        
+        const targetView = document.getElementById('view-' + tabName);
+        if (targetView) targetView.classList.add('active');
+        
+        const targetMenu = document.getElementById('menu-' + tabName);
+        if (targetMenu) targetMenu.classList.add('active');
+        
+        if (tabName === 'history' || tabName === 'transaction') fetchHistoryFromSheets();
     }
 
-    // ĐĂNG KÝ (FIX HOÀN TOÀN LỖI KẸT "ĐANG XỬ LÝ...")
+    function initGlobalAuth() {
+        const dot = document.getElementById('global-status-dot');
+        const txt = document.getElementById('global-status-text');
+        authClient = mqtt.connect(broker, options);
+        authClient.on('connect', () => {
+            dot.className = "status-dot dot-online";
+            txt.innerText = "Hệ thống Broker Cloud Trực Tuyến";
+            authClient.subscribe('tramsac1/device');
+            authClient.subscribe('tramsac2/device');
+        });
+
+        authClient.on('message', (topic, message) => {
+            const msg = message.toString();
+            if (topic === "tramsac1/device") {
+                const element1 = document.getElementById('hw-tramsac1');
+                if (element1) {
+                    if (msg === "ON") {
+                        element1.innerText = "ONLINE ✔️";
+                        element1.className = "hw-status-badge online";
+                    } else {
+                        element1.innerText = "OFFLINE 🛑";
+                        element1.className = "hw-status-badge offline";
+                        if (currentStationID === "tramsac1") {
+                            document.getElementById('btn-slow').classList.add('disabled-offline');
+                            document.getElementById('btn-fast').classList.add('disabled-offline');
+                            document.getElementById('esp-connection').innerText = "TRẠM SẠC: OFFLINE 🛑";
+                            document.getElementById('esp-connection').style.color = "#ff3b30";
+                            document.getElementById('charging-mode-status').style.display = "none";
+                        }
+                    }
+                }
+            }
+            if (topic === "tramsac2/device") {
+                const element2 = document.getElementById('hw-tramsac2');
+                if (element2) {
+                    if (msg === "ON") {
+                        element2.innerText = "ONLINE ✔️";
+                        element2.className = "hw-status-badge online";
+                    } else {
+                        element2.innerText = "OFFLINE 🛑";
+                        element2.className = "hw-status-badge offline";
+                        if (currentStationID === "tramsac2") {
+                            document.getElementById('btn-slow').classList.add('disabled-offline');
+                            document.getElementById('btn-fast').classList.add('disabled-offline');
+                            document.getElementById('esp-connection').innerText = "TRẠM SẠC: OFFLINE 🛑";
+                            document.getElementById('esp-connection').style.color = "#ff3b30";
+                            document.getElementById('charging-mode-status').style.display = "none";
+                        }
+                    }
+                }
+            }
+        });
+    }
+
+    initGlobalAuth();
+
     function handleRegister() {
         const user = document.getElementById('reg-user').value.trim();
         const pass = document.getElementById('reg-pass').value.trim();
         const errBox = document.getElementById('reg-error');
-        const btnReg = document.getElementById('btn-submit-reg');
-        
-        errBox.innerText = ""; 
-        errBox.className = "error-message"; 
-
-        if(!user || !pass) { errBox.innerText = "⚠️ Vui lòng điền đầy đủ thông tin!"; return; }
-        
-        btnReg.innerText = "Đang xử lý...";
-        btnReg.disabled = true; 
-
-        const tempRegClient = mqtt.connect(broker, options);
-        
-        const regTimeout = setTimeout(() => {
-            tempRegClient.end(true); 
-            btnReg.innerText = "Tạo Tài Khoản";
-            btnReg.disabled = false;
-            errBox.innerText = "❌ Lỗi kết nối Server! Vui lòng thử lại.";
-        }, 4000);
-
-        tempRegClient.on('connect', () => {
-            tempRegClient.publish('tramsac/users/' + user, pass, { retain: true, qos: 1 }, (err) => {
-                clearTimeout(regTimeout);
-                tempRegClient.end(); 
-
-                if (err) {
-                    btnReg.innerText = "Tạo Tài Khoản";
-                    btnReg.disabled = false;
-                    errBox.innerText = "❌ Lỗi lưu dữ liệu: " + err.message;
-                } else {
-                    errBox.className = "success-message";
-                    errBox.innerText = "✔️ Đăng ký thành công! Đang chuyển hướng...";
-                    
-                    setTimeout(() => {
-                        btnReg.innerText = "Tạo Tài Khoản";
-                        btnReg.disabled = false;
-                        switchAuth('login');
-                    }, 1500);
-                }
-            });
-        });
-
-        tempRegClient.on('error', (err) => {
-            clearTimeout(regTimeout);
-            tempRegClient.end(true);
-            btnReg.innerText = "Tạo Tài Khoản";
-            btnReg.disabled = false;
-            errBox.innerText = "❌ Server từ chối kết nối!";
+        if(!user || !pass) { errBox.innerText = "⚠️ Vui lòng nhập đầy đủ!"; return; }
+        errBox.style.color = "#333333";
+        errBox.innerText = "🔍 Đang kiểm tra tính khả dụng của tài khoản...";
+        let checkClient = mqtt.connect(broker, options);
+        let accountExists = false;
+        let checkTimeout = setTimeout(() => {
+            if (!accountExists) { checkClient.end(); proceedWithRegistration(user, pass, errBox); }
+        }, 1500);
+        checkClient.on('connect', () => { checkClient.subscribe('tramsac/users/' + user); });
+        checkClient.on('message', (topic, message) => {
+            if (topic === 'tramsac/users/' + user) {
+                accountExists = true; clearTimeout(checkTimeout); checkClient.end();
+                errBox.style.color = "#ff3b30"; errBox.innerText = "⚠️ Tài khoản này đã tồn tại!";
+            }
         });
     }
 
-    // ĐĂNG NHẬP
+    function proceedWithRegistration(user, pass, errBox) {
+        errBox.innerText = "🔍 Đang khởi tạo dữ liệu...";
+        const tempClient = mqtt.connect(broker, options);
+        tempClient.on('connect', () => {
+            tempClient.publish('tramsac/users/' + user, pass, { retain: true, qos: 1 }, (err) => {
+                tempClient.end();
+                if(!err) {
+                    errBox.style.color = "#00cc66"; errBox.innerText = "✔️ Đăng ký thành công!";
+                    setTimeout(() => { switchTab('login'); }, 1200);
+                } else { errBox.style.color = "#ff3b30"; errBox.innerText = "❌ Lỗi: " + err.message; }
+            });
+        });
+    }
+
     function handleLogin() {
         const user = document.getElementById('login-user').value.trim();
         const pass = document.getElementById('login-pass').value.trim();
         const errBox = document.getElementById('login-error');
-        const btnLogin = document.getElementById('btn-submit-login');
-        errBox.innerText = ""; 
-
-        if(!user || !pass) { errBox.innerText = "⚠️ Vui lòng nhập tài khoản và mật khẩu!"; return; }
-        
-        const targetTopic = 'tramsac/users/' + user;
-        btnLogin.innerText = "Đang kiểm tra...";
-        btnLogin.disabled = true;
-        
-        if (authClient) { authClient.end(); }
-        authClient = mqtt.connect(broker, options);
-
-        authClient.on('connect', () => {
-            authClient.subscribe(targetTopic);
+        if(!user || !pass) { errBox.innerText = "⚠️ Vui lòng điền đầy đủ!"; return; }
+        errBox.innerText = "Đang kiểm tra...";
+        if(loginTimeout) clearTimeout(loginTimeout);
+        const loginCheckClient = mqtt.connect(broker, options);
+        loginTimeout = setTimeout(() => { errBox.innerText = "❌ Sai thông tin!"; loginCheckClient.end(); }, 2500);
+        loginCheckClient.on('connect', () => { loginCheckClient.subscribe('tramsac/users/' + user); });
+        loginCheckClient.on('message', (topic, message) => {
+            clearTimeout(loginTimeout);
+            if(topic === 'tramsac/users/' + user) {
+                if(message.toString() === pass) {
+                    currentUser = user; loginCheckClient.end();
+                    document.getElementById('sidebar-menu').style.display = "block";
+                    document.getElementById('header-user-greeting').innerText = "Tài khoản sạc: " + currentUser + " 👋";
+                    document.getElementById('sidebar-auth-box').innerHTML = `
+                        <div class="sidebar-banner" style="background:#f5f5f5; border: 1px solid #e0e0e0; color:#33;">
+                            <div style="font-size:11px; color:#666666; margin-bottom:5px;">Đang hoạt động (${currentUser})</div>
+                            <button onclick="handleLogout()" style="border-color:#ff3b30; color:#ff3b30;">ĐĂNG XUẤT</button>
+                        </div>
+                    `;
+                    if (currentUser === "admin") {
+                        document.getElementById('history-title-text').innerText = "📋 Báo Cáo Lịch Sử Toàn Hệ Thống (Quyền Admin)";
+                        document.getElementById('transaction-title-text').innerText = "💳 Báo Cáo Giao Dịch Hệ Thống (Quyền Admin)";
+                    } else {
+                        document.getElementById('history-title-text').innerText = "📋 Nhật Ký Lịch Sử Sạc Của Bạn";
+                        document.getElementById('transaction-title-text').innerText = "💳 Nhật Ký Giao Dịch Của Bạn";
+                    }
+                    switchTab('station'); 
+                } else { errBox.innerText = "❌ Sai mật khẩu!"; loginCheckClient.end(); }
+            }
         });
+    }
 
-        const checkAuth = (topic, message) => {
-            if(topic === targetTopic) {
-                const cloudPassword = message.toString();
-                
-                if (authTimeout) { clearTimeout(authTimeout); authTimeout = null; }
+    function handleLogout() { location.reload(); }
 
-                authClient.unsubscribe(targetTopic); 
-                authClient.removeListener('message', checkAuth);
-                authClient.end(); 
-                
-                btnLogin.disabled = false;
-
-                if(cloudPassword === pass) {
-                    document.getElementById('login-screen').style.display = 'none';
-                    document.getElementById('station-select-screen').style.display = 'block';
-                } else {
-                    errBox.innerText = "❌ Mật khẩu không chính xác!";
-                    btnLogin.innerText = "Đăng Nhập";
-                }
+    function fetchHistoryFromSheets() {
+        const tbodyHistory = document.getElementById('history-data-rows');
+        const tbodyTransaction = document.getElementById('transaction-data-rows');
+        
+        tbodyHistory.innerHTML = `<tr><td colspan="10" style="text-align: center; color: #666666; padding: 20px;">⏳ Đang nạp dữ liệu lịch sử sạc...</td></tr>`;
+        tbodyTransaction.innerHTML = `<tr><td colspan="8" style="text-align: center; color: #666666; padding: 20px;">⏳ Đang nạp dữ liệu giao dịch...</td></tr>`;
+        
+        fetch(GOOGLE_SCRIPT_URL).then(res => res.json()).then(data => {
+            tbodyHistory.innerHTML = "";
+            tbodyTransaction.innerHTML = "";
+            
+            let filteredData = [];
+            if (currentUser === "admin") {
+                filteredData = data;
+            } else {
+                filteredData = data.filter(item => item.TaiKhoan === currentUser);
             }
+
+            if(filteredData.length === 0) {
+                tbodyHistory.innerHTML = `<tr><td colspan="10" style="text-align:center;color:#888888;padding:20px;">Chưa có lịch sử sạc khả dụng.</td></tr>`;
+                tbodyTransaction.innerHTML = `<tr><td colspan="8" style="text-align:center;color:#888888;padding:20px;">Chưa có lịch sử giao dịch khả dụng.</td></tr>`;
+                return;
+            }
+            
+            const reversedData = [...filteredData].reverse();
+            
+            reversedData.forEach(item => {
+                const row = document.createElement('tr');
+                const formatTime = (timeStr) => {
+                    if (!timeStr) return "-"; const d = new Date(timeStr);
+                    return isNaN(d.getTime()) ? timeStr : d.toLocaleString('vi-VN', {hour:'2-digit', minute:'2-digit', day:'2-digit', month:'2-digit'});
+                };
+                
+                // Đọc thuộc tính MaGiaoDich từ Sheets (nếu chưa có dữ liệu sẽ hiển thị dấu gạch ngang)
+                const maGD = item.MaGiaoDich ? item.MaGiaoDich : "-";
+                
+                row.innerHTML = `<td>${item.TaiKhoan}</td><td style="font-weight:600; color:#0077ff;">${item.TenTram}</td><td><span style="background:#f0f4f8; padding:3px 8px; border-radius:4px; font-weight:bold; color:${item.CheDoSac === 'FAST' ? '#ff3b30' : '#0077ff'}">${item.CheDoSac}</span></td><td>${formatTime(item.ThoiGianBatDau)}</td><td>${formatTime(item.ThoiGianKetThuc)}</td><td>${item.ThoiGianSac} Phút</td><td style="color:#b38600; font-weight:600;">${parseFloat(item.DienNangTieuThu).toFixed(1)} Wh</td><td style="color:#00cc66; font-weight:600;">${parseInt(item.SoTien).toLocaleString('vi-VN')} đ</td><td style="font-family:monospace; font-weight:500; color:#555;">${maGD}</td><td>${item.TrangThai}</td>`;
+                tbodyHistory.appendChild(row);
+            });
+
+            reversedData.forEach(item => {
+                const row = document.createElement('tr');
+                const formatTime = (timeStr) => {
+                    if (!timeStr) return "-"; const d = new Date(timeStr);
+                    return isNaN(d.getTime()) ? timeStr : d.toLocaleString('vi-VN', {hour:'2-digit', minute:'2-digit', day:'2-digit', month:'2-digit'});
+                };
+                
+                const contentCK = "TRAMSAC " + item.TramSacID.toUpperCase() + " " + item.TaiKhoan.toUpperCase();
+                const maGD = item.MaGiaoDich ? item.MaGiaoDich : "-";
+                
+                row.innerHTML = `<td>${item.TaiKhoan}</td><td style="font-weight:600; color:#0077ff;">${item.TenTram}</td><td>${formatTime(item.ThoiGianKetThuc)}</td><td>${item.ThoiGianSac} Phút</td><td style="color:#00cc66; font-weight:600;">${parseInt(item.SoTien).toLocaleString('vi-VN')} đ</td><td style="color:#555; font-family:monospace; font-weight:bold;">${contentCK}</td><td style="font-family:monospace; font-weight:bold; color:#ff7700;">${maGD}</td><td><span style="background:#e6fcf5; color:#00cc66; padding:4px 8px; border-radius:4px; font-weight:bold;">Chờ đối soát</span></td>`;
+                tbodyTransaction.appendChild(row);
+            });
+
+        }).catch(err => { 
+            tbodyHistory.innerHTML = `<tr><td colspan="10" style="text-align:center;color:#ff3b30;padding:20px;">❌ Lỗi kết nối Google Sheets.</td></tr>`;
+            tbodyTransaction.innerHTML = `<tr><td colspan="8" style="text-align:center;color:#ff3b30;padding:20px;">❌ Lỗi kết nối Google Sheets.</td></tr>`;
+        });
+    }
+
+    function openQRModal(stationName, time, energy, money) {
+        document.getElementById('bill-station').innerText = stationName;
+        document.getElementById('bill-time').innerText = time + " Phút";
+        document.getElementById('bill-energy').innerText = energy.toFixed(1) + " Wh";
+        document.getElementById('bill-money').innerText = parseInt(money).toLocaleString('vi-VN') + " đ";
+        
+        const content = encodeURIComponent("TRAMSAC " + currentStationID.toUpperCase() + " " + currentUser.toUpperCase());
+        const qrUrl = `https://img.vietqr.io/image/${BANK_CONFIG.bankId}-${BANK_CONFIG.accountNo}-compact2.png?amount=${money}&addInfo=${content}&accountName=${encodeURIComponent(BANK_CONFIG.accountName)}`;
+        
+        document.getElementById('qrImage').src = qrUrl;
+        document.getElementById('qrModal').style.display = "flex";
+    }
+
+    function closeQRModal() {
+        document.getElementById('qrModal').style.display = "none";
+    }
+
+    function saveSessionToSheets(statusTrigger) {
+        const calculatedMoney = Math.round(totalEnergyWh * PRICE_PER_WH);
+        const timeEndString = new Date().toISOString(); 
+        
+        let finalStatusText = "Đã sạc đầy ✔️";
+        if (statusTrigger === "OFF") {
+            finalStatusText = "Ngắt trực tuyến 🌐";
+        } else if (statusTrigger === "MANUAL_OFF" || isManualShutdown === true) {
+            finalStatusText = "Ngắt vật lý 🔌";
+        }
+
+        const currentStationName = document.getElementById('station-title').innerText.replace("MÀN HÌNH ĐIỀU KHIỂN - ", "");
+
+        const sessionData = { 
+            TaiKhoan: currentUser, 
+            TramSacID: currentStationID, 
+            TenTram: currentStationName, 
+            CheDoSac: activeChargingMode, 
+            ThoiGianBatDau: timeStartString, 
+            ThoiGianKetThuc: timeEndString, 
+            ThoiGianSac: currentSessionTime, 
+            DienNangTieuThu: totalEnergyWh, 
+            SoTien: calculatedMoney, 
+            TrangThai: finalStatusText,
+            MaGiaoDich: "" // Khi lưu chu trình mới, mặc định mã giao dịch trống để Admin cập nhật sau
         };
+        
+        openQRModal(currentStationName, currentSessionTime, totalEnergyWh, calculatedMoney);
 
-        authClient.on('message', checkAuth);
-
-        if (authTimeout) clearTimeout(authTimeout);
-
-        authTimeout = setTimeout(() => {
-            if (authClient) {
-                authClient.unsubscribe(targetTopic);
-                authClient.removeListener('message', checkAuth);
-                authClient.end();
-            }
-            btnLogin.disabled = false;
-            if(btnLogin.innerText === "Đang kiểm tra...") {
-                errBox.innerText = "❌ Tài khoản không tồn tại hoặc lỗi mạng!";
-                btnLogin.innerText = "Đăng Nhập";
-            }
-        }, 4000); 
+        fetch(GOOGLE_SCRIPT_URL, { method: 'POST', mode: 'no-cors', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(sessionData) }).catch(err => console.error(err));
     }
 
-    function handleLogout() {
-        document.getElementById('login-user').value = "";
-        document.getElementById('login-pass').value = "";
-        document.getElementById('login-error').innerText = "";
-        document.getElementById('btn-submit-login').innerText = "Đăng Nhập";
-        document.getElementById('station-select-screen').style.display = 'none';
-        document.getElementById('login-screen').style.display = 'block';
-    }
-
-    // ==========================================
-    // LOGIC ĐIỀU KHIỂN CHI TIẾT TRẠM SẠC
-    // ==========================================
     let client = null;
-    let currentStationID = ""; 
     let topicControl = "", topicStatus = "", topicData = "", topicDevice = ""; 
 
     function selectStation(stationID, stationName) {
+        const connBox = document.getElementById('esp-connection');
+        if (connBox) { connBox.innerText = "TRẠM SẠC: CHECKING..."; connBox.style.color = "#666666"; }
+        document.getElementById('charging-mode-status').style.display = "none";
+
+        const btnSlow = document.getElementById('btn-slow');
+        const btnFast = document.getElementById('btn-fast');
+        const btnOff = document.getElementById('btn-off');
+        
+        btnSlow.style.opacity = "1"; btnSlow.style.visibility = "visible"; btnSlow.style.height = "52px"; btnSlow.style.padding = "15px";
+        btnFast.style.opacity = "1"; btnFast.style.visibility = "visible"; btnFast.style.height = "52px"; btnFast.style.padding = "15px";
+        btnOff.style.opacity = "0"; btnOff.style.visibility = "hidden"; btnOff.style.height = "0"; btnOff.style.padding = "0";
+
+        btnSlow.classList.add('disabled-offline');
+        btnFast.classList.add('disabled-offline');
+        btnSlow.innerText = "SẠC CHẬM";
+        btnFast.innerText = "SẠC NHANH";
+        document.getElementById('web-vout').innerText = "0.00 V";
+        document.getElementById('web-curr').innerText = "0 mA";
+        document.getElementById('web-power').innerText = "0.00 W";
+        document.getElementById('web-time').innerText = "0 Phút";
+
         currentStationID = stationID;
-        document.getElementById('station-title').innerText = stationName;
+        document.getElementById('station-title').innerText = "MÀN HÌNH ĐIỀU KHIỂN - " + stationName.toUpperCase();
+        topicControl = stationID + "/chedo"; topicStatus = stationID + "/status"; topicData = stationID + "/data"; topicDevice = stationID + "/device";
+        
+        lastStatusReceived = ""; 
+        activeChargingMode = ""; 
+        isManualShutdown = false; 
+        triggerType = "AUTO_OFF";
 
-        topicControl = stationID + "/chedo"; 
-        topicStatus = stationID + "/status"; 
-        topicData = stationID + "/data"; 
-        topicDevice = stationID + "/device";
+        if (authClient && authClient.connected) {
+            authClient.publish(topicControl, "", { retain: true, qos: 1 });
+        }
 
-        document.getElementById('station-select-screen').style.display = "none";
-        document.getElementById('main-control-screen').style.display = "block";
-
-        initMQTT();
+        switchTab('control'); initMQTTStation();
     }
 
-    function initMQTT() {
-        document.getElementById('status').innerText = "Đang kết nối Server...";
-        document.getElementById('status').style.color = "#aaa";
-
+    function initMQTTStation() {
+        if(client) client.end();
         client = mqtt.connect(broker, options);
-
-        client.on('connect', () => {
-            document.getElementById('status').innerText = "● Server Trực tuyến";
-            document.getElementById('status').style.color = "#00ff88";
-            client.subscribe(topicStatus); 
-            client.subscribe(topicData); 
-            client.subscribe(topicDevice); 
-        });
-
         client.on('message', (topic, message) => {
             const msg = message.toString();
 
-            if (topic === topicDevice) {
-                const espStatusBox = document.getElementById('esp-connection');
-                if (msg === "ON") {
-                    espStatusBox.innerText = "TRẠM SẠC: ON";
-                    espStatusBox.style.color = "#00ff88";          
-                    espStatusBox.style.borderColor = "#00ff88";    
-                } else if (msg === "OFF") {
-                    espStatusBox.innerText = "TRẠM SẠC: OFF";
-                    espStatusBox.style.color = "#ff5252";          
-                    espStatusBox.style.borderColor = "#ff5252";    
+            if (topic === topicControl) {
+                if (msg === "MANUAL_OFF") {
+                    isManualShutdown = true; 
+                    triggerType = "MANUAL_OFF";
+                    sendControl("MANUAL_OFF");
                 }
+                return; 
             }
 
             if (topic === topicData) {
                 try {
-                    const data = JSON.parse(msg);
-                    const powerInW = data.power / 1000.0;
+                    const data = JSON.parse(msg); const powerW = data.power / 1000.0;
+                    currentSessionTime = data.time; totalEnergyWh = (powerW * (currentSessionTime / 60.0)); 
                     document.getElementById('web-vout').innerText = data.vout.toFixed(2) + " V";
                     document.getElementById('web-curr').innerText = data.curr.toFixed(0) + " mA";
-                    document.getElementById('web-power').innerText = powerInW.toFixed(2) + " W";
+                    document.getElementById('web-power').innerText = powerW.toFixed(2) + " W";
+                    document.getElementById('web-time').innerText = currentSessionTime + " Phút";
                     
-                    if(data.time !== undefined) {
-                        document.getElementById('web-time').innerText = data.time + " Phút";
+                    if (data.curr > 50 && lastStatusReceived === "RUNNING") {
+                        const modeBox = document.getElementById('charging-mode-status');
+                        if (modeBox.style.display === "none" || modeBox.innerText.includes("ĐANG CHỜ")) {
+                            modeBox.style.display = "block";
+                            if (activeChargingMode === "FAST" || data.curr > 1100) {
+                                modeBox.innerText = "CHẾ ĐỘ: SẠC NHANH ⚡"; modeBox.style.color = "#0077ff";
+                            } else {
+                                modeBox.innerText = "CHẾ ĐỘ: SẠC CHẬM ⏱️"; modeBox.style.color = "#ffb300";
+                            }
+                        }
                     }
-                } catch (e) {
-                    console.error(e);
+                } catch (e) {}
+                return;
+            }
+
+            if (topic === topicDevice) {
+                const box = document.getElementById('esp-connection');
+                const btnSlow = document.getElementById('btn-slow');
+                const btnFast = document.getElementById('btn-fast');
+                if (msg === "ON") {
+                    box.innerText = "TRẠM SẠC: ONLINE ✔️"; box.style.color = "#00cc66";
+                    if (lastStatusReceived != "RUNNING") { 
+                        if (btnSlow.style.opacity !== "0") {
+                            btnSlow.classList.remove('disabled-offline'); btnFast.classList.remove('disabled-offline'); 
+                        }
+                    }
+                } else {
+                    box.innerText = "TRẠM SẠC: OFFLINE 🛑"; box.style.color = "#ff3b30";
+                    btnSlow.classList.add('disabled-offline'); btnFast.classList.add('disabled-offline');
+                    document.getElementById('charging-mode-status').style.display = "none";
                 }
+                return;
             }
 
             if (topic === topicStatus) {
-                const icon = document.getElementById('icon');
                 const btnSlow = document.getElementById('btn-slow');
                 const btnFast = document.getElementById('btn-fast');
                 const btnOff = document.getElementById('btn-off');
-                const telemetryBox = document.getElementById('telemetry-box');
-                const btnChangeStation = document.getElementById('btn-change-station');
+                const modeBox = document.getElementById('charging-mode-status');
                 
                 if (msg === "RUNNING") {
-                    icon.innerText = "⚡"; 
-                    btnSlow.style.display = "none";
-                    btnFast.style.display = "none";
-                    telemetryBox.style.display = "grid"; 
-                    btnOff.style.display = "block"; 
-                    btnChangeStation.style.display = "none";
+                    if (lastStatusReceived !== "RUNNING") {
+                        timeStartString = new Date().toISOString();
+                        isManualShutdown = false; 
+                        triggerType = "AUTO_OFF"; 
+                    }
+                    lastStatusReceived = "RUNNING";
+
+                    btnSlow.style.opacity = "0"; btnSlow.style.visibility = "hidden"; btnSlow.style.height = "0"; btnSlow.style.padding = "0";
+                    btnFast.style.opacity = "0"; btnFast.style.visibility = "hidden"; btnFast.style.height = "0"; btnFast.style.padding = "0";
+                    
+                    setTimeout(() => {
+                        btnOff.style.opacity = "1"; btnOff.style.visibility = "visible"; btnOff.style.height = "52px"; btnOff.style.padding = "15px";
+                    }, 100);
+
+                    modeBox.style.display = "block";
+                    if (activeChargingMode === "FAST") {
+                        modeBox.innerText = "CHẾ ĐỘ: SẠC NHANH ⚡"; modeBox.style.color = "#0077ff";
+                    } else if (activeChargingMode === "SLOW") {
+                        modeBox.innerText = "CHẾ ĐỘ: SẠC CHẬM ⏱️"; modeBox.style.color = "#ffb300";
+                    } else {
+                        modeBox.innerText = "CHẾ ĐỘ: ĐANG XÁC MINH... 🔍"; modeBox.style.color = "#666666";
+                    }
                 } 
                 else if (msg === "STANDBY") {
-                    icon.innerText = "🔌"; 
-                    btnSlow.style.display = "block";
-                    btnFast.style.display = "block";
-                    telemetryBox.style.display = "none"; 
-                    btnOff.style.display = "none"; 
-                    btnChangeStation.style.display = "inline-flex";
+                    btnOff.style.opacity = "0"; btnOff.style.visibility = "hidden"; btnOff.style.height = "0"; btnOff.style.padding = "0";
+                    setTimeout(() => {
+                        btnSlow.style.opacity = "1"; btnSlow.style.visibility = "visible"; btnSlow.style.height = "52px"; btnSlow.style.padding = "15px";
+                        btnFast.style.opacity = "1"; btnFast.style.visibility = "visible"; btnFast.style.height = "52px"; btnFast.style.padding = "15px";
+                        btnSlow.innerText = "SẠC CHẬM"; btnFast.innerText = "SẠC NHANH";
+                        
+                        const currentCardBadge = document.getElementById('hw-' + currentStationID);
+                        if (currentCardBadge && currentCardBadge.classList.contains('online')) {
+                            btnSlow.classList.remove('disabled-offline'); btnFast.classList.remove('disabled-offline');
+                        } else {
+                            btnSlow.classList.add('disabled-offline'); btnFast.classList.add('disabled-offline');
+                        }
+                    }, 100);
+                    modeBox.style.display = "none";
                     
-                    document.getElementById('web-vout').innerText = "0.00 V";
-                    document.getElementById('web-curr').innerText = "0 mA";
-                    document.getElementById('web-power').innerText = "0.00 W";
-                    document.getElementById('web-time').innerText = "0 Phút"; 
+                    if (lastStatusReceived === "RUNNING") {
+                        setTimeout(() => {
+                            saveSessionToSheets(triggerType); 
+                            isManualShutdown = false; 
+                            triggerType = "AUTO_OFF"; 
+                        }, 200);
+                    } 
+                    lastStatusReceived = "STANDBY";
                 }
             }
         });
+        client.on('connect', () => { client.subscribe(topicStatus); client.subscribe(topicData); client.subscribe(topicDevice); client.subscribe(topicControl); });
     }
 
     function sendControl(mode) {
         if (client && client.connected) {
-            client.publish(topicControl, mode, { retain: true });
-        }
-    }
+            if (mode === "SLOW" || mode === "FAST") {
+                activeChargingMode = mode;
+                isManualShutdown = false; 
+                triggerType = "AUTO_OFF";
+                const btnSlow = document.getElementById('btn-slow'); const btnFast = document.getElementById('btn-fast');
+                if (mode === "SLOW") btnSlow.innerText = "⏳ ĐANG KÍCH HOẠT..."; else btnFast.innerText = "⏳ ĐANG KÍCH HOẠT...";
+                btnSlow.classList.add('disabled-offline'); btnFast.classList.add('disabled-offline');
+            }
+            
+            if (mode === "OFF") {
+                isManualShutdown = true;
+                triggerType = "OFF"; 
+            }
+            if (mode === "MANUAL_OFF") {
+                isManualShutdown = true;
+                triggerType = "MANUAL_OFF"; 
+            }
 
-    function goBack() {
-        if (client) { client.end(); }
-        const espStatusBox = document.getElementById('esp-connection');
-        espStatusBox.innerText = "TRẠM SẠC: CHECKING...";
-        espStatusBox.style.color = "#888";
-        espStatusBox.style.borderColor = "#444";
-        
-        document.getElementById('main-control-screen').style.display = "none";
-        document.getElementById('station-select-screen').style.display = "block";
+            client.publish(topicControl, mode, { retain: false, qos: 1 });
+            if ((mode === "OFF" || mode === "MANUAL_OFF") && lastStatusReceived === "RUNNING") {
+                saveSessionToSheets(triggerType); 
+                lastStatusReceived = "STANDBY";
+                document.getElementById('btn-slow').innerText = "SẠC CHẬM"; document.getElementById('btn-fast').innerText = "SẠC NHANH";
+            }
+        }
     }
 </script>
 </body>
