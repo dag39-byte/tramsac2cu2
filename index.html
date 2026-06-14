@@ -54,13 +54,16 @@
         #web-time { color: #ff5252; } 
         
         .btn-group { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-top: 20px; position: relative; }
-        .btn-mode { height: 52px; padding: 15px; border-radius: 25px; font-weight: bold; font-size: 14px; border: 1px solid #e0e0e0; cursor: pointer; transition: all 0.3s ease-in-out; opacity: 1; visibility: visible; box-sizing: border-box; }
-        .btn-slow { background: #ffffff; color: #333333; }
-        .btn-slow:hover { background: #f5f5f5; border-color: #cccccc; }
+        .btn-mode { height: 52px; padding: 15px; border-radius: 25px; font-weight: bold; font-size: 14px; border: 1px solid #e0e0e0; cursor: pointer; transition: all 0.2s ease-in-out; opacity: 1; visibility: visible; box-sizing: border-box; }
+        .btn-normal { background: #ffffff; color: #333333; }
+        .btn-normal:hover { background: #f5f5f5; border-color: #cccccc; }
         .btn-fast { background: #0077ff; color: white; border: none; box-shadow: 0 4px 12px rgba(0,119,255,0.2); }
         .btn-fast:hover { background: #0055cc; }
         
-        .btn-off { grid-column: span 2; background: #ff3b30; color: white; border: none; box-shadow: 0 4px 12px rgba(255,59,48,0.2); opacity: 0; visibility: hidden; height: 0; padding: 0 !important; margin: 0; overflow: hidden; font-size: 14px; font-weight: bold; border-radius: 25px !important; text-align: center; transition: all 0.3s ease-in-out; }
+        /* Hiệu ứng móp nút bấm khi chạm */
+        .btn-mode:active { transform: scale(0.95); transition: 0.05s; }
+        
+        .btn-off { grid-column: span 2; background: #ff3b30; color: white; border: none; box-shadow: 0 4px 12px rgba(255,59,48,0.2); opacity: 0; visibility: hidden; height: 0; padding: 0 !important; margin: 0; overflow: hidden; font-size: 14px; font-weight: bold; border-radius: 25px !important; text-align: center; transition: all 0.2s ease-in-out; }
         .btn-off:hover { background: #d62218; }
         .btn-mode.disabled-offline { opacity: 0.25 !important; background-color: #eaeaea !important; color: #888888 !important; pointer-events: none !important; cursor: not-allowed !important; box-shadow: none !important; border: 1px solid #cccccc !important; }
         
@@ -83,29 +86,18 @@
         td { padding: 15px 10px; border-bottom: 1px solid #eeeeee; color: #444444; word-break: break-word; } 
         tr:hover td { background-color: #f9fbff; }
         
-        /* Tối ưu lại chiều rộng cột để thêm cột mã giao dịch */
-        #table-hist th:nth-child(1), #table-hist td:nth-child(1) { width: 8%; } 
-        #table-hist th:nth-child(2), #table-hist td:nth-child(2) { width: 12%; } 
-        #table-hist th:nth-child(3), #table-hist td:nth-child(3) { width: 8%; } 
-        #table-hist th:nth-child(4), #table-hist td:nth-child(4) { width: 13%; } 
-        #table-hist th:nth-child(5), #table-hist td:nth-child(5) { width: 13%; } 
-        #table-hist th:nth-child(6), #table-hist td:nth-child(6) { width: 9%; } 
-        #table-hist th:nth-child(7), #table-hist td:nth-child(7) { width: 9%; } 
-        #table-hist th:nth-child(8), #table-hist td:nth-child(8) { width: 8%; } 
-        #table-hist th:nth-child(9), #table-hist td:nth-child(9) { width: 11%; }
-        #table-hist th:nth-child(10), #table-hist td:nth-child(10) { width: 9%; }
-
-        #table-tran th:nth-child(1), #table-tran td:nth-child(1) { width: 10%; } 
-        #table-tran th:nth-child(2), #table-tran td:nth-child(2) { width: 13%; } 
-        #table-tran th:nth-child(3), #table-tran td:nth-child(3) { width: 15%; } 
-        #table-tran th:nth-child(4), #table-tran td:nth-child(4) { width: 10%; } 
-        #table-tran th:nth-child(5), #table-tran td:nth-child(5) { width: 10%; } 
-        #table-tran th:nth-child(6), #table-tran td:nth-child(6) { width: 15%; } 
-        #table-tran th:nth-child(7), #table-tran td:nth-child(7) { width: 15%; } 
-        #table-tran th:nth-child(8), #table-tran td:nth-child(8) { width: 12%; }
+        /* Cân đối 8 cột Lịch Sử Sạc */
+        #table-hist th:nth-child(1), #table-hist td:nth-child(1) { width: 10%; } 
+        #table-hist th:nth-child(2), #table-hist td:nth-child(2) { width: 15%; } 
+        #table-hist th:nth-child(3), #table-hist td:nth-child(3) { width: 10%; } 
+        #table-hist th:nth-child(4), #table-hist td:nth-child(4) { width: 16%; } 
+        #table-hist th:nth-child(5), #table-hist td:nth-child(5) { width: 16%; } 
+        #table-hist th:nth-child(6), #table-hist td:nth-child(6) { width: 11%; } 
+        #table-hist th:nth-child(7), #table-hist td:nth-child(7) { width: 11%; } 
+        #table-hist th:nth-child(8), #table-hist td:nth-child(8) { width: 11%; } 
     </style>
 </head>
-<body>
+<body ontouchstart="">
 
     <div class="sidebar">
         <div class="sidebar-top">
@@ -116,9 +108,6 @@
                 </div>
                 <div class="menu-item" id="menu-history" onclick="switchTab('history')">
                     <span class="menu-icon">📋</span> Lịch Sử Sạc
-                </div>
-                <div class="menu-item" id="menu-transaction" onclick="switchTab('transaction')">
-                    <span class="menu-icon">💳</span> Lịch Sử Giao Dịch
                 </div>
             </div>
         </div>
@@ -195,7 +184,7 @@
                     </div>
 
                     <div class="btn-group">
-                        <button id="btn-slow" class="btn-mode btn-slow disabled-offline" onclick="sendControl('SLOW')">SẠC CHẬM</button>
+                        <button id="btn-normal" class="btn-mode btn-normal disabled-offline" onclick="sendControl('NORMAL')">SẠC THƯỜNG</button>
                         <button id="btn-fast" class="btn-mode btn-fast disabled-offline" onclick="sendControl('FAST')">SẠC NHANH</button>
                         <button id="btn-off" class="btn-mode btn-off" onclick="sendControl('OFF')">NGẮT SẠC 🛑</button>
                     </div>
@@ -211,28 +200,9 @@
                     <div class="table-wrapper">
                         <table id="table-hist">
                             <thead>
-                                <tr><th>Tài khoản</th><th>Trạm sạc</th><th>Chế độ</th><th>Bắt đầu</th><th>Kết thúc</th><th>Thời lượng</th><th>Điện năng</th><th>Số tiền</th><th>Mã giao dịch</th><th>Trạng thái</th></tr>
+                                <tr><th>Tài khoản</th><th>Trạm sạc</th><th>Chế độ</th><th>Bắt đầu</th><th>Kết thúc</th><th>Thời lượng</th><th>Điện năng</th><th>Số tiền</th></tr>
                             </thead>
                             <tbody id="history-data-rows">
-                                <tr><td colspan="10" style="text-align: center; color: #888888; padding: 20px;">Vui lòng bấm làm mới để tải dữ liệu...</td></tr>
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-            </div>
-
-            <div id="view-transaction" class="app-view">
-                <div class="table-container">
-                    <div class="table-header-box">
-                        <h3 style="margin:0; font-size:16px; color:#111111;" id="transaction-title-text">💳 Nhật Ký Lịch Sử Giao Dịch Thanh Toán</h3>
-                        <button style="background:#00cc66; border:none; color:white; padding:8px 18px; border-radius:20px; font-size:12px; font-weight:bold; cursor:pointer;" onclick="fetchHistoryFromSheets()">LÀM MỚI 🔄</button>
-                    </div>
-                    <div class="table-wrapper">
-                        <table id="table-tran">
-                            <thead>
-                                <tr><th>Tài khoản</th><th>Trạm sạc</th><th>Thời gian kết thúc</th><th>Thời lượng</th><th>Số tiền</th><th>Nội dung CK</th><th>Mã giao dịch</th><th>Trạng thái</th></tr>
-                            </thead>
-                            <tbody id="transaction-data-rows">
                                 <tr><td colspan="8" style="text-align: center; color: #888888; padding: 20px;">Vui lòng bấm làm mới để tải dữ liệu...</td></tr>
                             </tbody>
                         </table>
@@ -272,7 +242,6 @@
 
     const PRICE_PER_WH = 3.858; 
     
-    // CẤU HÌNH ĐỊA CHỈ NHẬN TIỀN CỦA BẠN QUA VIETQR
     const BANK_CONFIG = {
         bankId: "BIDV", 
         accountNo: "5601721069", 
@@ -303,7 +272,7 @@
         const targetMenu = document.getElementById('menu-' + tabName);
         if (targetMenu) targetMenu.classList.add('active');
         
-        if (tabName === 'history' || tabName === 'transaction') fetchHistoryFromSheets();
+        if (tabName === 'history') fetchHistoryFromSheets();
     }
 
     function initGlobalAuth() {
@@ -329,7 +298,7 @@
                         element1.innerText = "OFFLINE 🛑";
                         element1.className = "hw-status-badge offline";
                         if (currentStationID === "tramsac1") {
-                            document.getElementById('btn-slow').classList.add('disabled-offline');
+                            document.getElementById('btn-normal').classList.add('disabled-offline');
                             document.getElementById('btn-fast').classList.add('disabled-offline');
                             document.getElementById('esp-connection').innerText = "TRẠM SẠC: OFFLINE 🛑";
                             document.getElementById('esp-connection').style.color = "#ff3b30";
@@ -348,7 +317,7 @@
                         element2.innerText = "OFFLINE 🛑";
                         element2.className = "hw-status-badge offline";
                         if (currentStationID === "tramsac2") {
-                            document.getElementById('btn-slow').classList.add('disabled-offline');
+                            document.getElementById('btn-normal').classList.add('disabled-offline');
                             document.getElementById('btn-fast').classList.add('disabled-offline');
                             document.getElementById('esp-connection').innerText = "TRẠM SẠC: OFFLINE 🛑";
                             document.getElementById('esp-connection').style.color = "#ff3b30";
@@ -422,10 +391,8 @@
                     `;
                     if (currentUser === "admin") {
                         document.getElementById('history-title-text').innerText = "📋 Báo Cáo Lịch Sử Toàn Hệ Thống (Quyền Admin)";
-                        document.getElementById('transaction-title-text').innerText = "💳 Báo Cáo Giao Dịch Hệ Thống (Quyền Admin)";
                     } else {
                         document.getElementById('history-title-text').innerText = "📋 Nhật Ký Lịch Sử Sạc Của Bạn";
-                        document.getElementById('transaction-title-text').innerText = "💳 Nhật Ký Giao Dịch Của Bạn";
                     }
                     switchTab('station'); 
                 } else { errBox.innerText = "❌ Sai mật khẩu!"; loginCheckClient.end(); }
@@ -437,30 +404,18 @@
 
     function fetchHistoryFromSheets() {
         const tbodyHistory = document.getElementById('history-data-rows');
-        const tbodyTransaction = document.getElementById('transaction-data-rows');
-        
-        tbodyHistory.innerHTML = `<tr><td colspan="10" style="text-align: center; color: #666666; padding: 20px;">⏳ Đang nạp dữ liệu lịch sử sạc...</td></tr>`;
-        tbodyTransaction.innerHTML = `<tr><td colspan="8" style="text-align: center; color: #666666; padding: 20px;">⏳ Đang nạp dữ liệu giao dịch...</td></tr>`;
+        tbodyHistory.innerHTML = `<tr><td colspan="8" style="text-align: center; color: #666666; padding: 20px;">⏳ Đang nạp dữ liệu lịch sử sạc...</td></tr>`;
         
         fetch(GOOGLE_SCRIPT_URL).then(res => res.json()).then(data => {
             tbodyHistory.innerHTML = "";
-            tbodyTransaction.innerHTML = "";
-            
-            let filteredData = [];
-            if (currentUser === "admin") {
-                filteredData = data;
-            } else {
-                filteredData = data.filter(item => item.TaiKhoan === currentUser);
-            }
+            let filteredData = (currentUser === "admin") ? data : data.filter(item => item.TaiKhoan === currentUser);
 
             if(filteredData.length === 0) {
-                tbodyHistory.innerHTML = `<tr><td colspan="10" style="text-align:center;color:#888888;padding:20px;">Chưa có lịch sử sạc khả dụng.</td></tr>`;
-                tbodyTransaction.innerHTML = `<tr><td colspan="8" style="text-align:center;color:#888888;padding:20px;">Chưa có lịch sử giao dịch khả dụng.</td></tr>`;
+                tbodyHistory.innerHTML = `<tr><td colspan="8" style="text-align:center;color:#888888;padding:20px;">Chưa có lịch sử sạc khả dụng.</td></tr>`;
                 return;
             }
             
             const reversedData = [...filteredData].reverse();
-            
             reversedData.forEach(item => {
                 const row = document.createElement('tr');
                 const formatTime = (timeStr) => {
@@ -468,30 +423,11 @@
                     return isNaN(d.getTime()) ? timeStr : d.toLocaleString('vi-VN', {hour:'2-digit', minute:'2-digit', day:'2-digit', month:'2-digit'});
                 };
                 
-                // Đọc thuộc tính MaGiaoDich từ Sheets (nếu chưa có dữ liệu sẽ hiển thị dấu gạch ngang)
-                const maGD = item.MaGiaoDich ? item.MaGiaoDich : "-";
-                
-                row.innerHTML = `<td>${item.TaiKhoan}</td><td style="font-weight:600; color:#0077ff;">${item.TenTram}</td><td><span style="background:#f0f4f8; padding:3px 8px; border-radius:4px; font-weight:bold; color:${item.CheDoSac === 'FAST' ? '#ff3b30' : '#0077ff'}">${item.CheDoSac}</span></td><td>${formatTime(item.ThoiGianBatDau)}</td><td>${formatTime(item.ThoiGianKetThuc)}</td><td>${item.ThoiGianSac} Phút</td><td style="color:#b38600; font-weight:600;">${parseFloat(item.DienNangTieuThu).toFixed(1)} Wh</td><td style="color:#00cc66; font-weight:600;">${parseInt(item.SoTien).toLocaleString('vi-VN')} đ</td><td style="font-family:monospace; font-weight:500; color:#555;">${maGD}</td><td>${item.TrangThai}</td>`;
+                row.innerHTML = `<td>${item.TaiKhoan}</td><td style="font-weight:600; color:#0077ff;">${item.TenTram}</td><td><span style="background:#f0f4f8; padding:3px 8px; border-radius:4px; font-weight:bold; color:${item.CheDoSac === 'FAST' ? '#ff3b30' : '#0077ff'}">${item.CheDoSac}</span></td><td>${formatTime(item.ThoiGianBatDau)}</td><td>${formatTime(item.ThoiGianKetThuc)}</td><td>${item.ThoiGianSac} Phút</td><td style="color:#b38600; font-weight:600;">${parseFloat(item.DienNangTieuThu).toFixed(1)} Wh</td><td style="color:#00cc66; font-weight:600;">${parseInt(item.SoTien).toLocaleString('vi-VN')} đ</td>`;
                 tbodyHistory.appendChild(row);
             });
-
-            reversedData.forEach(item => {
-                const row = document.createElement('tr');
-                const formatTime = (timeStr) => {
-                    if (!timeStr) return "-"; const d = new Date(timeStr);
-                    return isNaN(d.getTime()) ? timeStr : d.toLocaleString('vi-VN', {hour:'2-digit', minute:'2-digit', day:'2-digit', month:'2-digit'});
-                };
-                
-                const contentCK = "TRAMSAC " + item.TramSacID.toUpperCase() + " " + item.TaiKhoan.toUpperCase();
-                const maGD = item.MaGiaoDich ? item.MaGiaoDich : "-";
-                
-                row.innerHTML = `<td>${item.TaiKhoan}</td><td style="font-weight:600; color:#0077ff;">${item.TenTram}</td><td>${formatTime(item.ThoiGianKetThuc)}</td><td>${item.ThoiGianSac} Phút</td><td style="color:#00cc66; font-weight:600;">${parseInt(item.SoTien).toLocaleString('vi-VN')} đ</td><td style="color:#555; font-family:monospace; font-weight:bold;">${contentCK}</td><td style="font-family:monospace; font-weight:bold; color:#ff7700;">${maGD}</td><td><span style="background:#e6fcf5; color:#00cc66; padding:4px 8px; border-radius:4px; font-weight:bold;">Chờ đối soát</span></td>`;
-                tbodyTransaction.appendChild(row);
-            });
-
         }).catch(err => { 
-            tbodyHistory.innerHTML = `<tr><td colspan="10" style="text-align:center;color:#ff3b30;padding:20px;">❌ Lỗi kết nối Google Sheets.</td></tr>`;
-            tbodyTransaction.innerHTML = `<tr><td colspan="8" style="text-align:center;color:#ff3b30;padding:20px;">❌ Lỗi kết nối Google Sheets.</td></tr>`;
+            tbodyHistory.innerHTML = `<tr><td colspan="8" style="text-align:center;color:#ff3b30;padding:20px;">❌ Lỗi kết nối Google Sheets.</td></tr>`;
         });
     }
 
@@ -521,6 +457,8 @@
             finalStatusText = "Ngắt trực tuyến 🌐";
         } else if (statusTrigger === "MANUAL_OFF" || isManualShutdown === true) {
             finalStatusText = "Ngắt vật lý 🔌";
+        } else if (statusTrigger === "FLOAT") {
+            finalStatusText = "Đã hoàn thành sạc (Ngâm) 🔋";
         }
 
         const currentStationName = document.getElementById('station-title').innerText.replace("MÀN HÌNH ĐIỀU KHIỂN - ", "");
@@ -536,11 +474,10 @@
             DienNangTieuThu: totalEnergyWh, 
             SoTien: calculatedMoney, 
             TrangThai: finalStatusText,
-            MaGiaoDich: "" // Khi lưu chu trình mới, mặc định mã giao dịch trống để Admin cập nhật sau
+            MaGiaoDich: "" 
         };
         
         openQRModal(currentStationName, currentSessionTime, totalEnergyWh, calculatedMoney);
-
         fetch(GOOGLE_SCRIPT_URL, { method: 'POST', mode: 'no-cors', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(sessionData) }).catch(err => console.error(err));
     }
 
@@ -552,17 +489,17 @@
         if (connBox) { connBox.innerText = "TRẠM SẠC: CHECKING..."; connBox.style.color = "#666666"; }
         document.getElementById('charging-mode-status').style.display = "none";
 
-        const btnSlow = document.getElementById('btn-slow');
+        const btnNormal = document.getElementById('btn-normal');
         const btnFast = document.getElementById('btn-fast');
         const btnOff = document.getElementById('btn-off');
         
-        btnSlow.style.opacity = "1"; btnSlow.style.visibility = "visible"; btnSlow.style.height = "52px"; btnSlow.style.padding = "15px";
+        btnNormal.style.opacity = "1"; btnNormal.style.visibility = "visible"; btnNormal.style.height = "52px"; btnNormal.style.padding = "15px";
         btnFast.style.opacity = "1"; btnFast.style.visibility = "visible"; btnFast.style.height = "52px"; btnFast.style.padding = "15px";
         btnOff.style.opacity = "0"; btnOff.style.visibility = "hidden"; btnOff.style.height = "0"; btnOff.style.padding = "0";
 
-        btnSlow.classList.add('disabled-offline');
+        btnNormal.classList.add('disabled-offline');
         btnFast.classList.add('disabled-offline');
-        btnSlow.innerText = "SẠC CHẬM";
+        btnNormal.innerText = "SẠC THƯỜNG"; 
         btnFast.innerText = "SẠC NHANH";
         document.getElementById('web-vout').innerText = "0.00 V";
         document.getElementById('web-curr').innerText = "0 mA";
@@ -581,7 +518,6 @@
         if (authClient && authClient.connected) {
             authClient.publish(topicControl, "", { retain: true, qos: 1 });
         }
-
         switchTab('control'); initMQTTStation();
     }
 
@@ -595,6 +531,7 @@
                 if (msg === "MANUAL_OFF") {
                     isManualShutdown = true; 
                     triggerType = "MANUAL_OFF";
+                    // Gửi lệnh siêu tốc để cập nhật giao diện
                     sendControl("MANUAL_OFF");
                 }
                 return; 
@@ -611,13 +548,11 @@
                     
                     if (data.curr > 50 && lastStatusReceived === "RUNNING") {
                         const modeBox = document.getElementById('charging-mode-status');
-                        if (modeBox.style.display === "none" || modeBox.innerText.includes("ĐANG CHỜ")) {
-                            modeBox.style.display = "block";
-                            if (activeChargingMode === "FAST" || data.curr > 1100) {
-                                modeBox.innerText = "CHẾ ĐỘ: SẠC NHANH ⚡"; modeBox.style.color = "#0077ff";
-                            } else {
-                                modeBox.innerText = "CHẾ ĐỘ: SẠC CHẬM ⏱️"; modeBox.style.color = "#ffb300";
-                            }
+                        modeBox.style.display = "block";
+                        if (activeChargingMode === "FAST" || data.curr > 2100) { 
+                            modeBox.innerText = "CHẾ ĐỘ: SẠC NHANH ⚡"; modeBox.style.color = "#0077ff";
+                        } else {
+                            modeBox.innerText = "CHẾ ĐỘ: SẠC THƯỜNG ⏱️"; modeBox.style.color = "#ffb300"; 
                         }
                     }
                 } catch (e) {}
@@ -626,75 +561,87 @@
 
             if (topic === topicDevice) {
                 const box = document.getElementById('esp-connection');
-                const btnSlow = document.getElementById('btn-slow');
+                const btnNormal = document.getElementById('btn-normal');
                 const btnFast = document.getElementById('btn-fast');
                 if (msg === "ON") {
                     box.innerText = "TRẠM SẠC: ONLINE ✔️"; box.style.color = "#00cc66";
-                    if (lastStatusReceived != "RUNNING") { 
-                        if (btnSlow.style.opacity !== "0") {
-                            btnSlow.classList.remove('disabled-offline'); btnFast.classList.remove('disabled-offline'); 
+                    if (lastStatusReceived !== "RUNNING" && lastStatusReceived !== "FLOAT") { 
+                        if (btnNormal.style.opacity !== "0") {
+                            btnNormal.classList.remove('disabled-offline'); btnFast.classList.remove('disabled-offline'); 
                         }
                     }
                 } else {
                     box.innerText = "TRẠM SẠC: OFFLINE 🛑"; box.style.color = "#ff3b30";
-                    btnSlow.classList.add('disabled-offline'); btnFast.classList.add('disabled-offline');
+                    btnNormal.classList.add('disabled-offline'); btnFast.classList.add('disabled-offline');
                     document.getElementById('charging-mode-status').style.display = "none";
                 }
                 return;
             }
 
             if (topic === topicStatus) {
-                const btnSlow = document.getElementById('btn-slow');
+                const btnNormal = document.getElementById('btn-normal');
                 const btnFast = document.getElementById('btn-fast');
                 const btnOff = document.getElementById('btn-off');
                 const modeBox = document.getElementById('charging-mode-status');
                 
                 if (msg === "RUNNING") {
-                    if (lastStatusReceived !== "RUNNING") {
+                    if (lastStatusReceived !== "RUNNING" && lastStatusReceived !== "FLOAT") {
                         timeStartString = new Date().toISOString();
                         isManualShutdown = false; 
                         triggerType = "AUTO_OFF"; 
                     }
                     lastStatusReceived = "RUNNING";
 
-                    btnSlow.style.opacity = "0"; btnSlow.style.visibility = "hidden"; btnSlow.style.height = "0"; btnSlow.style.padding = "0";
+                    btnNormal.style.opacity = "0"; btnNormal.style.visibility = "hidden"; btnNormal.style.height = "0"; btnNormal.style.padding = "0";
                     btnFast.style.opacity = "0"; btnFast.style.visibility = "hidden"; btnFast.style.height = "0"; btnFast.style.padding = "0";
                     
                     setTimeout(() => {
                         btnOff.style.opacity = "1"; btnOff.style.visibility = "visible"; btnOff.style.height = "52px"; btnOff.style.padding = "15px";
+                        btnOff.innerText = "NGẮT SẠC 🛑";         
+                        btnOff.style.background = "#ff3b30";      
                     }, 100);
 
                     modeBox.style.display = "block";
                     if (activeChargingMode === "FAST") {
                         modeBox.innerText = "CHẾ ĐỘ: SẠC NHANH ⚡"; modeBox.style.color = "#0077ff";
-                    } else if (activeChargingMode === "SLOW") {
-                        modeBox.innerText = "CHẾ ĐỘ: SẠC CHẬM ⏱️"; modeBox.style.color = "#ffb300";
-                    } else {
-                        modeBox.innerText = "CHẾ ĐỘ: ĐANG XÁC MINH... 🔍"; modeBox.style.color = "#666666";
+                    } else if (activeChargingMode === "NORMAL") {
+                        modeBox.innerText = "CHẾ ĐỘ: SẠC THƯỜNG ⏱️"; modeBox.style.color = "#ffb300"; 
                     }
+                }
+                
+                else if (msg === "FLOAT") {
+                    if (lastStatusReceived === "RUNNING") {
+                        saveSessionToSheets("FLOAT");
+                    }
+                    lastStatusReceived = "FLOAT";
+                    modeBox.style.display = "block";
+                    modeBox.innerText = "CHẾ ĐỘ: ĐANG NGÂM BẢO DƯỠNG 🔄"; 
+                    modeBox.style.color = "#00cc66"; 
                 } 
+
                 else if (msg === "STANDBY") {
                     btnOff.style.opacity = "0"; btnOff.style.visibility = "hidden"; btnOff.style.height = "0"; btnOff.style.padding = "0";
                     setTimeout(() => {
-                        btnSlow.style.opacity = "1"; btnSlow.style.visibility = "visible"; btnSlow.style.height = "52px"; btnSlow.style.padding = "15px";
+                        btnNormal.style.opacity = "1"; btnNormal.style.visibility = "visible"; btnNormal.style.height = "52px"; btnNormal.style.padding = "15px";
                         btnFast.style.opacity = "1"; btnFast.style.visibility = "visible"; btnFast.style.height = "52px"; btnFast.style.padding = "15px";
-                        btnSlow.innerText = "SẠC CHẬM"; btnFast.innerText = "SẠC NHANH";
+                        btnNormal.innerText = "SẠC THƯỜNG"; btnFast.innerText = "SẠC NHANH";
                         
                         const currentCardBadge = document.getElementById('hw-' + currentStationID);
                         if (currentCardBadge && currentCardBadge.classList.contains('online')) {
-                            btnSlow.classList.remove('disabled-offline'); btnFast.classList.remove('disabled-offline');
+                            btnNormal.classList.remove('disabled-offline'); btnFast.classList.remove('disabled-offline');
                         } else {
-                            btnSlow.classList.add('disabled-offline'); btnFast.classList.add('disabled-offline');
+                            btnNormal.classList.add('disabled-offline'); btnFast.classList.add('disabled-offline');
                         }
                     }, 100);
                     modeBox.style.display = "none";
                     
-                    if (lastStatusReceived === "RUNNING") {
+                    // CHỈ LƯU HÓA ĐƠN KHI ESP32 XÁC NHẬN ĐÃ NGẮT
+                    if (lastStatusReceived === "RUNNING" || lastStatusReceived === "FLOAT") {
                         setTimeout(() => {
                             saveSessionToSheets(triggerType); 
                             isManualShutdown = false; 
                             triggerType = "AUTO_OFF"; 
-                        }, 200);
+                        }, 500); 
                     } 
                     lastStatusReceived = "STANDBY";
                 }
@@ -703,32 +650,39 @@
         client.on('connect', () => { client.subscribe(topicStatus); client.subscribe(topicData); client.subscribe(topicDevice); client.subscribe(topicControl); });
     }
 
+    // HÀM ĐIỀU KHIỂN SIÊU TỐC - ĐÃ BỎ LƯU HÓA ĐƠN GÂY TRÙNG LẶP
     function sendControl(mode) {
-        if (client && client.connected) {
-            if (mode === "SLOW" || mode === "FAST") {
+        let mqttConn = (authClient && authClient.connected) ? authClient : client;
+
+        if (mqttConn && mqttConn.connected) {
+            const btnNormal = document.getElementById('btn-normal'); 
+            const btnFast = document.getElementById('btn-fast');
+            const btnOff = document.getElementById('btn-off');
+
+            if (mode === "NORMAL" || mode === "FAST") {
                 activeChargingMode = mode;
                 isManualShutdown = false; 
                 triggerType = "AUTO_OFF";
-                const btnSlow = document.getElementById('btn-slow'); const btnFast = document.getElementById('btn-fast');
-                if (mode === "SLOW") btnSlow.innerText = "⏳ ĐANG KÍCH HOẠT..."; else btnFast.innerText = "⏳ ĐANG KÍCH HOẠT...";
-                btnSlow.classList.add('disabled-offline'); btnFast.classList.add('disabled-offline');
+
+                btnNormal.style.opacity = "0"; btnNormal.style.visibility = "hidden"; btnNormal.style.height = "0"; btnNormal.style.padding = "0";
+                btnFast.style.opacity = "0"; btnFast.style.visibility = "hidden"; btnFast.style.height = "0"; btnFast.style.padding = "0";
+
+                btnOff.style.opacity = "1"; btnOff.style.visibility = "visible"; btnOff.style.height = "52px"; btnOff.style.padding = "15px";
+                btnOff.innerText = "⏳ ĐANG GỬI LỆNH...";
+                btnOff.style.background = "#ffaa00"; 
             }
             
-            if (mode === "OFF") {
+            if (mode === "OFF" || mode === "MANUAL_OFF") {
                 isManualShutdown = true;
-                triggerType = "OFF"; 
-            }
-            if (mode === "MANUAL_OFF") {
-                isManualShutdown = true;
-                triggerType = "MANUAL_OFF"; 
+                triggerType = mode; 
+                btnOff.innerText = "⏳ ĐANG NGẮT...";
+                btnOff.style.background = "#ffaa00";
             }
 
-            client.publish(topicControl, mode, { retain: false, qos: 1 });
-            if ((mode === "OFF" || mode === "MANUAL_OFF") && lastStatusReceived === "RUNNING") {
-                saveSessionToSheets(triggerType); 
-                lastStatusReceived = "STANDBY";
-                document.getElementById('btn-slow').innerText = "SẠC CHẬM"; document.getElementById('btn-fast').innerText = "SẠC NHANH";
-            }
+            mqttConn.publish(topicControl, mode, { retain: false, qos: 1 });
+
+        } else {
+            alert("Mạng đang gián đoạn, vui lòng kiểm tra lại kết nối Broker!");
         }
     }
 </script>
