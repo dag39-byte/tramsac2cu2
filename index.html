@@ -60,7 +60,7 @@
         .btn-fast { background: #0077ff; color: white; border: none; box-shadow: 0 4px 12px rgba(0,119,255,0.2); }
         .btn-fast:hover { background: #0055cc; }
         
-        /* Hiệu ứng móp nút bấm khi chạm */
+        /* Hiệu ứng móp nút bấm khi chạm (chống trễ) */
         .btn-mode:active { transform: scale(0.95); transition: 0.05s; }
         
         .btn-off { grid-column: span 2; background: #ff3b30; color: white; border: none; box-shadow: 0 4px 12px rgba(255,59,48,0.2); opacity: 0; visibility: hidden; height: 0; padding: 0 !important; margin: 0; overflow: hidden; font-size: 14px; font-weight: bold; border-radius: 25px !important; text-align: center; transition: all 0.2s ease-in-out; }
@@ -95,6 +95,39 @@
         #table-hist th:nth-child(6), #table-hist td:nth-child(6) { width: 11%; } 
         #table-hist th:nth-child(7), #table-hist td:nth-child(7) { width: 11%; } 
         #table-hist th:nth-child(8), #table-hist td:nth-child(8) { width: 11%; } 
+
+        /* =======================================================
+           TỐI ƯU HÓA HIỂN THỊ TRÊN MÀN HÌNH ĐIỆN THOẠI (RESPONSIVE)
+           ======================================================= */
+        @media (max-width: 768px) {
+            body { flex-direction: column; overflow-y: auto; height: auto; }
+            .sidebar { width: 100%; height: auto; border-right: none; border-bottom: 1px solid #e0e0e0; padding: 10px 0; display: block; }
+            .sidebar-top { align-items: center; }
+            .logo { margin-bottom: 10px; justify-content: center; }
+            #sidebar-menu { display: flex !important; flex-direction: row; justify-content: space-around; padding-top: 10px; border-top: 1px dashed #eee; overflow-x: auto; }
+            .menu-item { flex-direction: column; padding: 5px 10px; font-size: 11px; gap: 4px; border-left: none; border-bottom: 3px solid transparent; }
+            .menu-item.active { background: transparent; border-bottom-color: #0077ff; }
+            .sidebar-banner { margin: 10px; padding: 10px; }
+            
+            .header { height: auto; flex-direction: column; padding: 15px; gap: 10px; text-align: center; }
+            .content-body { padding: 15px 10px; overflow-x: hidden; }
+            .auth-card { padding: 20px; margin: 10px auto; }
+            .stations-grid { grid-template-columns: 1fr; gap: 15px; }
+            
+            .control-panel { padding: 15px; }
+            #station-title { font-size: 16px; display: block; margin-top: 10px; line-height: 1.4; }
+            .lcd-telemetry { grid-template-columns: 1fr 1fr; gap: 10px; margin: 15px 0; }
+            .telemetry-card { padding: 10px; }
+            .telemetry-card .param { font-size: 10px; text-align: center; }
+            .telemetry-card .val { font-size: 17px; text-align: center; }
+            .btn-mode { padding: 10px; font-size: 12px; height: auto; }
+            
+            .table-container { padding-bottom: 5px; }
+            .table-header-box { flex-direction: column; gap: 12px; text-align: center; }
+            .table-wrapper { width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; }
+            table { min-width: 800px; /* Ép bảng rộng 800px để vuốt ngang, chống rớt chữ */ }
+            th, td { padding: 12px 8px; font-size: 12px; }
+        }
     </style>
 </head>
 <body ontouchstart="">
@@ -170,7 +203,7 @@
 
             <div id="view-control" class="app-view">
                 <div class="control-panel">
-                    <button style="background:none; border:none; color:#666666; float:left; cursor:pointer; font-size:14px; font-weight:500;" onclick="switchTab('station')">◀ Quay lại danh sách</button>
+                    <button style="background:none; border:none; color:#666666; float:left; cursor:pointer; font-size:14px; font-weight:500;" onclick="switchTab('station')">◀ Quay lại</button>
                     <h2 id="station-title" style="margin: 0 auto; color:#111111; display:inline-block;">CHI TIẾT TRẠM SẠC</h2>
                     
                     <div id="esp-connection" style="margin-top:15px; font-weight:bold; color:#666666;">TRẠM SẠC: CHECKING...</div>
@@ -194,7 +227,7 @@
             <div id="view-history" class="app-view">
                 <div class="table-container">
                     <div class="table-header-box">
-                        <h3 style="margin:0; font-size:16px; color:#111111;" id="history-title-text">📋 Nhật Ký Lịch Sử Sạc Hệ Thống</h3>
+                        <h3 style="margin:0; font-size:16px; color:#111111;" id="history-title-text">📋 Lịch Sử Sạc Của Bạn</h3>
                         <button style="background:#0077ff; border:none; color:white; padding:8px 18px; border-radius:20px; font-size:12px; font-weight:bold; cursor:pointer;" onclick="fetchHistoryFromSheets()">LÀM MỚI 🔄</button>
                     </div>
                     <div class="table-wrapper">
@@ -227,12 +260,14 @@
                 <div class="bill-row" style="border-top:1px dashed #ddd; margin-top:6px; padding-top:6px;"><span class="lbl" style="color:#00cc66; font-weight:bold;">Tổng tiền:</span><span class="val" id="bill-money" style="color:#00cc66; font-size:16px;">0 đ</span></div>
             </div>
             
-            <button class="btn-primary" onclick="closeQRModal()">ĐÃ CHUYỂN KHOẢN THÀNH CÔNG</button>
+            <button id="btn-verify-pay" class="btn-primary" onclick="verifyPayment()">ĐÃ CHUYỂN KHOẢN THÀNH CÔNG</button>
         </div>
     </div>
 
 <script>
+    // URL Web App của Google Apps Script (BẠN HÃY DÁN URL MỚI VÀO ĐÂY)
     const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwmqxc5zEZRtbhUaBSmcmi6upDiGNkTs37TSG5xXWMXAKXmSp5FLQzZkLepArjB2Dvz4g/exec"; 
+    
     const broker = "wss://d45e33c4b1a243678728415fe08b0cc4.s1.eu.hivemq.cloud:8884/mqtt"; 
     const options = {
         clientId: "web_client_main_" + Math.random().toString(16).substr(2, 4),
@@ -292,18 +327,10 @@
                 const element1 = document.getElementById('hw-tramsac1');
                 if (element1) {
                     if (msg === "ON") {
-                        element1.innerText = "ONLINE ✔️";
-                        element1.className = "hw-status-badge online";
+                        element1.innerText = "ONLINE ✔️"; element1.className = "hw-status-badge online";
                     } else {
-                        element1.innerText = "OFFLINE 🛑";
-                        element1.className = "hw-status-badge offline";
-                        if (currentStationID === "tramsac1") {
-                            document.getElementById('btn-normal').classList.add('disabled-offline');
-                            document.getElementById('btn-fast').classList.add('disabled-offline');
-                            document.getElementById('esp-connection').innerText = "TRẠM SẠC: OFFLINE 🛑";
-                            document.getElementById('esp-connection').style.color = "#ff3b30";
-                            document.getElementById('charging-mode-status').style.display = "none";
-                        }
+                        element1.innerText = "OFFLINE 🛑"; element1.className = "hw-status-badge offline";
+                        if (currentStationID === "tramsac1") resetOfflineStation();
                     }
                 }
             }
@@ -311,22 +338,22 @@
                 const element2 = document.getElementById('hw-tramsac2');
                 if (element2) {
                     if (msg === "ON") {
-                        element2.innerText = "ONLINE ✔️";
-                        element2.className = "hw-status-badge online";
+                        element2.innerText = "ONLINE ✔️"; element2.className = "hw-status-badge online";
                     } else {
-                        element2.innerText = "OFFLINE 🛑";
-                        element2.className = "hw-status-badge offline";
-                        if (currentStationID === "tramsac2") {
-                            document.getElementById('btn-normal').classList.add('disabled-offline');
-                            document.getElementById('btn-fast').classList.add('disabled-offline');
-                            document.getElementById('esp-connection').innerText = "TRẠM SẠC: OFFLINE 🛑";
-                            document.getElementById('esp-connection').style.color = "#ff3b30";
-                            document.getElementById('charging-mode-status').style.display = "none";
-                        }
+                        element2.innerText = "OFFLINE 🛑"; element2.className = "hw-status-badge offline";
+                        if (currentStationID === "tramsac2") resetOfflineStation();
                     }
                 }
             }
         });
+    }
+
+    function resetOfflineStation() {
+        document.getElementById('btn-normal').classList.add('disabled-offline');
+        document.getElementById('btn-fast').classList.add('disabled-offline');
+        document.getElementById('esp-connection').innerText = "TRẠM SẠC: OFFLINE 🛑";
+        document.getElementById('esp-connection').style.color = "#ff3b30";
+        document.getElementById('charging-mode-status').style.display = "none";
     }
 
     initGlobalAuth();
@@ -381,7 +408,7 @@
             if(topic === 'tramsac/users/' + user) {
                 if(message.toString() === pass) {
                     currentUser = user; loginCheckClient.end();
-                    document.getElementById('sidebar-menu').style.display = "block";
+                    document.getElementById('sidebar-menu').style.display = "flex"; // Fix display responsive
                     document.getElementById('header-user-greeting').innerText = "Tài khoản sạc: " + currentUser + " 👋";
                     document.getElementById('sidebar-auth-box').innerHTML = `
                         <div class="sidebar-banner" style="background:#f5f5f5; border: 1px solid #e0e0e0; color:#33;">
@@ -390,9 +417,9 @@
                         </div>
                     `;
                     if (currentUser === "admin") {
-                        document.getElementById('history-title-text').innerText = "📋 Báo Cáo Lịch Sử Toàn Hệ Thống (Quyền Admin)";
+                        document.getElementById('history-title-text').innerText = "📋 Báo Cáo Lịch Sử Toàn Hệ Thống (Admin)";
                     } else {
-                        document.getElementById('history-title-text').innerText = "📋 Nhật Ký Lịch Sử Sạc Của Bạn";
+                        document.getElementById('history-title-text').innerText = "📋 Lịch Sử Sạc Của Bạn";
                     }
                     switchTab('station'); 
                 } else { errBox.innerText = "❌ Sai mật khẩu!"; loginCheckClient.end(); }
@@ -448,19 +475,10 @@
         document.getElementById('qrModal').style.display = "none";
     }
 
-    function saveSessionToSheets(statusTrigger) {
+    // Gửi đúng 9 cột dữ liệu lên Sheets
+    function saveSessionToSheets() {
         const calculatedMoney = Math.round(totalEnergyWh * PRICE_PER_WH);
         const timeEndString = new Date().toISOString(); 
-        
-        let finalStatusText = "Đã sạc đầy ✔️";
-        if (statusTrigger === "OFF") {
-            finalStatusText = "Ngắt trực tuyến 🌐";
-        } else if (statusTrigger === "MANUAL_OFF" || isManualShutdown === true) {
-            finalStatusText = "Ngắt vật lý 🔌";
-        } else if (statusTrigger === "FLOAT") {
-            finalStatusText = "Đã hoàn thành sạc (Ngâm) 🔋";
-        }
-
         const currentStationName = document.getElementById('station-title').innerText.replace("MÀN HÌNH ĐIỀU KHIỂN - ", "");
 
         const sessionData = { 
@@ -472,13 +490,33 @@
             ThoiGianKetThuc: timeEndString, 
             ThoiGianSac: currentSessionTime, 
             DienNangTieuThu: totalEnergyWh, 
-            SoTien: calculatedMoney, 
-            TrangThai: finalStatusText,
-            MaGiaoDich: "" 
+            SoTien: calculatedMoney 
         };
         
         openQRModal(currentStationName, currentSessionTime, totalEnergyWh, calculatedMoney);
         fetch(GOOGLE_SCRIPT_URL, { method: 'POST', mode: 'no-cors', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(sessionData) }).catch(err => console.error(err));
+    }
+
+    // Giả lập thanh toán ngân hàng
+    function verifyPayment() {
+        const btn = document.getElementById('btn-verify-pay');
+        btn.innerText = "⏳ ĐANG KẾT NỐI API NGÂN HÀNG...";
+        btn.style.background = "#ffaa00"; 
+        btn.style.pointerEvents = "none"; 
+
+        setTimeout(() => {
+            btn.innerText = "✔️ GIAO DỊCH THÀNH CÔNG!";
+            btn.style.background = "#00cc66"; 
+
+            setTimeout(() => {
+                closeQRModal();
+                btn.innerText = "ĐÃ CHUYỂN KHOẢN THÀNH CÔNG";
+                btn.style.background = "#0077ff";
+                btn.style.pointerEvents = "auto";
+                alert("Cảm ơn bạn đã sử dụng dịch vụ của Trạm Sạc Tự Động!");
+            }, 1500); 
+
+        }, 3000); 
     }
 
     let client = null;
@@ -529,9 +567,7 @@
 
             if (topic === topicControl) {
                 if (msg === "MANUAL_OFF") {
-                    isManualShutdown = true; 
-                    triggerType = "MANUAL_OFF";
-                    // Gửi lệnh siêu tốc để cập nhật giao diện
+                    isManualShutdown = true; triggerType = "MANUAL_OFF";
                     sendControl("MANUAL_OFF");
                 }
                 return; 
@@ -587,8 +623,7 @@
                 if (msg === "RUNNING") {
                     if (lastStatusReceived !== "RUNNING" && lastStatusReceived !== "FLOAT") {
                         timeStartString = new Date().toISOString();
-                        isManualShutdown = false; 
-                        triggerType = "AUTO_OFF"; 
+                        isManualShutdown = false; triggerType = "AUTO_OFF"; 
                     }
                     lastStatusReceived = "RUNNING";
 
@@ -610,9 +645,6 @@
                 }
                 
                 else if (msg === "FLOAT") {
-                    if (lastStatusReceived === "RUNNING") {
-                        saveSessionToSheets("FLOAT");
-                    }
                     lastStatusReceived = "FLOAT";
                     modeBox.style.display = "block";
                     modeBox.innerText = "CHẾ ĐỘ: ĐANG NGÂM BẢO DƯỠNG 🔄"; 
@@ -635,10 +667,10 @@
                     }, 100);
                     modeBox.style.display = "none";
                     
-                    // CHỈ LƯU HÓA ĐƠN KHI ESP32 XÁC NHẬN ĐÃ NGẮT
+                    // LƯU HÓA ĐƠN KHI ESP32 XÁC NHẬN ĐÃ NGẮT
                     if (lastStatusReceived === "RUNNING" || lastStatusReceived === "FLOAT") {
                         setTimeout(() => {
-                            saveSessionToSheets(triggerType); 
+                            saveSessionToSheets(); 
                             isManualShutdown = false; 
                             triggerType = "AUTO_OFF"; 
                         }, 500); 
@@ -650,7 +682,7 @@
         client.on('connect', () => { client.subscribe(topicStatus); client.subscribe(topicData); client.subscribe(topicDevice); client.subscribe(topicControl); });
     }
 
-    // HÀM ĐIỀU KHIỂN SIÊU TỐC - ĐÃ BỎ LƯU HÓA ĐƠN GÂY TRÙNG LẶP
+    // Hàm bắn lệnh siêu tốc, không tự ý lưu Sheets
     function sendControl(mode) {
         let mqttConn = (authClient && authClient.connected) ? authClient : client;
 
@@ -660,27 +692,19 @@
             const btnOff = document.getElementById('btn-off');
 
             if (mode === "NORMAL" || mode === "FAST") {
-                activeChargingMode = mode;
-                isManualShutdown = false; 
-                triggerType = "AUTO_OFF";
-
+                activeChargingMode = mode; isManualShutdown = false; triggerType = "AUTO_OFF";
                 btnNormal.style.opacity = "0"; btnNormal.style.visibility = "hidden"; btnNormal.style.height = "0"; btnNormal.style.padding = "0";
                 btnFast.style.opacity = "0"; btnFast.style.visibility = "hidden"; btnFast.style.height = "0"; btnFast.style.padding = "0";
-
                 btnOff.style.opacity = "1"; btnOff.style.visibility = "visible"; btnOff.style.height = "52px"; btnOff.style.padding = "15px";
-                btnOff.innerText = "⏳ ĐANG GỬI LỆNH...";
-                btnOff.style.background = "#ffaa00"; 
+                btnOff.innerText = "⏳ ĐANG GỬI LỆNH..."; btnOff.style.background = "#ffaa00"; 
             }
             
             if (mode === "OFF" || mode === "MANUAL_OFF") {
-                isManualShutdown = true;
-                triggerType = mode; 
-                btnOff.innerText = "⏳ ĐANG NGẮT...";
-                btnOff.style.background = "#ffaa00";
+                isManualShutdown = true; triggerType = mode; 
+                btnOff.innerText = "⏳ ĐANG NGẮT..."; btnOff.style.background = "#ffaa00";
             }
 
             mqttConn.publish(topicControl, mode, { retain: false, qos: 1 });
-
         } else {
             alert("Mạng đang gián đoạn, vui lòng kiểm tra lại kết nối Broker!");
         }
