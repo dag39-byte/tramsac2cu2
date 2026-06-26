@@ -620,6 +620,8 @@
 
     function closeSuccessModal() {
         document.getElementById('successModal').style.display = "none";
+        totalEnergyWh = 0;
+        document.getElementById('web-energy').innerText = "0.00 Wh";
     }
 
     let client = null;
