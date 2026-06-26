@@ -621,7 +621,16 @@
     function closeSuccessModal() {
         document.getElementById('successModal').style.display = "none";
         totalEnergyWh = 0;
+        currentSessionTime = 0;
         document.getElementById('web-energy').innerText = "0.00 Wh";
+        document.getElementById('web-energy').innerText = "0.00 Wh";
+        document.getElementById('web-vout').innerText = "0.00 V";
+        document.getElementById('web-curr').innerText = "0 mA";
+        document.getElementById('web-power').innerText = "0.00 W";
+        document.getElementById('web-time').innerText = "00:00:00";
+    
+    // 3. (Tùy chọn) Tự động quay về màn hình chọn trạm
+    switchTab('station');
     }
 
     let client = null;
