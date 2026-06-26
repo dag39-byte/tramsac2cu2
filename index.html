@@ -687,6 +687,12 @@
                     
                     // LẤY TRỰC TIẾP DỮ LIỆU WH TỪ ESP32 TRUYỀN LÊN (Xóa bỏ tính toán ảo trên web)
                     totalEnergyWh = data.wh || 0; 
+                    let incomingWh = data.wh || 0;
+                    if (incomingWh > 0) {
+                        totalEnergyWh = incomingWh;
+                    } else if (lastStatusReceived === "STANDBY" || lastStatusReceived === "") {
+                        totalEnergyWh = 0;
+                    }
                     
                     document.getElementById('web-vout').innerText = data.vout.toFixed(2) + " V";
                     document.getElementById('web-curr').innerText = data.curr.toFixed(0) + " mA";
